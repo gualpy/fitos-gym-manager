@@ -1,0 +1,8 @@
+
+{
+  "name": "FitOS Gym Manager",
+  "description": "A comprehensive gym management software featuring subscription tracking, POS for supplements, attendance reports, and AI-driven business insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
