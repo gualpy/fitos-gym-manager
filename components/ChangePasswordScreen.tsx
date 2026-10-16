@@ -20,13 +20,12 @@ export function passwordProblem(current: string, next: string, confirm: string):
 
 interface ChangePasswordScreenProps {
   session: Session;
-  /** Receives a fresh session (the old token still says "password change pending"). */
+  /** Receives a fresh session (the server closed every old one when the password changed). */
   onChanged: (session: Session) => void;
-  onExpired: () => void;
   onLogout: () => void;
 }
 
-const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ session, onChanged, onExpired, onLogout }) => {
+const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ session, onChanged, onLogout }) => {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -44,10 +43,10 @@ const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ session, on
     setBusy(true);
     setError('');
     try {
-      await changePassword(session.accessToken, current, next);
+      await changePassword(current, next);
       onChanged(await login(session.tenantSlug, session.username, next));
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) return onExpired();
+      if (err instanceof ApiError && err.status === 401) return; // session ended: the session manager signs out
       if (err instanceof ApiError && err.code === 'invalid_current_password') setError('La contraseña actual es incorrecta.');
       else if (err instanceof ApiError && err.code === 'weak_password') setError(err.message);
       else setError(loginErrorMessage(err));

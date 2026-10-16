@@ -34,18 +34,46 @@ export const apiBaseUrl = (): string => {
   return url.replace(/\/+$/, '');
 };
 
+/** Registered by the session manager so this module needs no knowledge of sessions (and no circular import). */
+interface AuthHooks {
+  getAccessToken: () => string | null;
+  /** Renews the session; resolves true when a new access token is available. */
+  refresh: () => Promise<boolean>;
+}
+
+let authHooks: AuthHooks | null = null;
+
+export const setAuthHooks = (hooks: AuthHooks): void => {
+  authHooks = hooks;
+};
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
+  /** Explicit bearer token (used where the session is being created or torn down). */
   token?: string;
+  /** Use the current session's access token; on a 401 renew the session once and retry. */
+  auth?: boolean;
   /** Gym slug. The API only honours it in development; in production the gym comes from the host name. */
   tenantSlug?: string;
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  try {
+    return await send<T>(path, options, options.auth ? (authHooks?.getAccessToken() ?? undefined) : options.token);
+  } catch (err) {
+    // The access token is short-lived: renew the session once and replay the request.
+    if (options.auth && authHooks && err instanceof ApiError && err.status === 401 && (await authHooks.refresh())) {
+      return send<T>(path, options, authHooks.getAccessToken() ?? undefined);
+    }
+    throw err;
+  }
+}
+
+async function send<T>(path: string, options: RequestOptions, token: string | undefined): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-  if (options.token) headers.Authorization = `Bearer ${options.token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   if (options.tenantSlug) headers['X-Tenant-Slug'] = options.tenantSlug;
 
   const url = `${apiBaseUrl()}${path}`; // throws ApiConfigError before any network call

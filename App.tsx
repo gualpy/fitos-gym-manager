@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import CustomerList from './components/CustomerList';
@@ -13,10 +13,9 @@ import InventoryManager from './components/InventoryManager';
 import LoginScreen from './components/LoginScreen';
 import ChangePasswordScreen from './components/ChangePasswordScreen';
 import AuthCard, { primaryButtonClass } from './components/AuthCard';
-import { UserRole, Customer, Product, Sale, AttendanceRecord } from './types';
-import { MOCK_CUSTOMERS, MOCK_PRODUCTS, MOCK_ATTENDANCE } from './constants';
-import { toLocalDateString } from './utils/date';
-import { Session, clearSession, fetchMe, loadSession, roleLabel, saveSession, toUiRole } from './services/auth';
+import { UserRole, Customer, Product, Sale } from './types';
+import { MOCK_CUSTOMERS, MOCK_PRODUCTS } from './constants';
+import { Session, getSession, logout, restoreSession, roleLabel, setSession as startSessionOf, subscribe, toUiRole } from './services/auth';
 import { ApiError } from './services/api';
 import { MembershipSummary, getCustomerDetail } from './services/members';
 
@@ -39,7 +38,6 @@ const App: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(MOCK_ATTENDANCE);
   const [allowWithoutPlan, setAllowWithoutPlan] = useState(false);
 
   useEffect(() => {
@@ -50,66 +48,63 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
-  const endSession = useCallback((notice = '') => {
-    clearSession();
-    setSession(null);
-    setMembership(undefined);
-    setSessionNotice(notice);
-    setActiveTab('dashboard');
+  // The session lives in the session manager (it renews itself); this component only mirrors it.
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = subscribe((next, reason) => {
+      if (cancelled) return;
+      setSession(next);
+      if (reason === 'expired') {
+        setSessionNotice(SESSION_EXPIRED);
+        setActiveTab('dashboard');
+      }
+    });
+
+    (async () => {
+      await restoreSession();
+      if (!cancelled) {
+        setSession(getSession());
+        setBooting(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   const startSession = (next: Session) => {
-    saveSession(next);
-    setSession(next);
+    startSessionOf(next);
     setSessionNotice('');
     setActiveTab('dashboard');
   };
 
-  // Resume the session of this tab, but only if the server still accepts the token.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const stored = loadSession();
-      if (stored) {
-        try {
-          await fetchMe(stored.accessToken);
-          if (!cancelled) setSession(stored);
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 401) {
-            clearSession();
-            if (!cancelled) setSessionNotice(SESSION_EXPIRED);
-          } else if (!cancelled) {
-            setSession(stored); // server unreachable: keep working with what we have
-          }
-        }
-      }
-      if (!cancelled) setBooting(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const handleLogout = () => {
+    void logout();
+    setSessionNotice('');
+    setActiveTab('dashboard');
+  };
 
   // A customer's header shows their real membership.
+  const role = session?.user.role;
+  const customerId = session?.user.customerId;
+  const passwordPending = session?.user.mustChangePassword ?? false;
   useEffect(() => {
-    if (!session || session.user.role !== 'customer' || !session.user.customerId || session.user.mustChangePassword) {
+    if (role !== 'customer' || !customerId || passwordPending) {
       setMembership(undefined);
       return;
     }
     let cancelled = false;
-    getCustomerDetail(session.accessToken, session.user.customerId)
+    getCustomerDetail(customerId)
       .then((detail) => !cancelled && setMembership(detail.membership))
       .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 401) endSession(SESSION_EXPIRED);
-        else setMembership(null);
+        if (!cancelled && !(err instanceof ApiError && err.status === 401)) setMembership(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [session, endSession]);
-
-  const handleLogout = () => endSession();
+  }, [role, customerId, passwordPending]);
 
   const addCustomer = (newCustomer: Omit<Customer, 'id' | 'clientCode' | 'joinDate'>) => {
     const nextId = Math.max(...customers.map(c => c.id)) + 1;
@@ -121,17 +116,6 @@ const App: React.FC = () => {
       joinDate: new Date().toISOString().split('T')[0]
     };
     setCustomers([...customers, customer]);
-  };
-
-  const handleCheckIn = (customerId: number) => {
-    const now = new Date();
-    const newRecord: AttendanceRecord = {
-      id: Date.now(),
-      customerId,
-      date: toLocalDateString(now),
-      checkIn: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    setAttendance([newRecord, ...attendance]);
   };
 
   const processSale = (cart: { id: number; qty: number; price: number }[]) => {
@@ -172,7 +156,6 @@ const App: React.FC = () => {
         customers,
         products,
         sales,
-        attendance,
         config: {
           allowWithoutPlan,
           isDarkMode
@@ -193,13 +176,14 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    if (!session) return null;
     switch (activeTab) {
       case 'dashboard': return <Dashboard />;
       case 'customers': return <CustomerList customers={customers} onAdd={addCustomer} onToggleStatus={toggleCustomerStatus} />;
       case 'pos': return <POS products={products} onProcessSale={processSale} />;
       case 'plans': return <PlansManager />;
-      case 'attendance': return <AttendanceHistory records={userRole === UserRole.CUSTOMER ? [] : attendance} />;
-      case 'checkin': return <CheckInSimulator customers={customers} allowWithoutPlan={allowWithoutPlan} onCheckIn={handleCheckIn} />;
+      case 'attendance': return <AttendanceHistory session={session} />;
+      case 'checkin': return <CheckInSimulator />;
       case 'settings': return (
         <Settings 
           allowWithoutPlan={allowWithoutPlan} 
@@ -232,7 +216,6 @@ const App: React.FC = () => {
       <ChangePasswordScreen
         session={session}
         onChanged={startSession}
-        onExpired={() => endSession(SESSION_EXPIRED)}
         onLogout={handleLogout}
       />
     );

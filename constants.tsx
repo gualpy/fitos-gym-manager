@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Customer, UserRole, SubscriptionPlan, Product, AttendanceRecord, BusinessHours } from './types';
+import { Customer, UserRole, SubscriptionPlan, Product, BusinessHours } from './types';
 import { Users, CreditCard, ShoppingCart, BarChart3, Clock, Settings, LogOut, CheckSquare, FileText } from 'lucide-react';
 
 export const MOCK_CUSTOMERS: Customer[] = [
@@ -8,13 +8,6 @@ export const MOCK_CUSTOMERS: Customer[] = [
   { id: 2, clientCode: 1002, name: 'María Garcia', email: 'maria@example.com', role: UserRole.CUSTOMER, gender: 'F', age: 34, planStatus: 'ACTIVE', currentPlanId: 2, joinDate: '2023-11-15' },
   { id: 3, clientCode: 1003, name: 'Carlos Ruiz', email: 'carlos@example.com', role: UserRole.CUSTOMER, gender: 'M', age: 45, planStatus: 'INACTIVE', joinDate: '2023-09-10' },
   { id: 4, clientCode: 1004, name: 'Ana Belén', email: 'ana@example.com', role: UserRole.CUSTOMER, gender: 'F', age: 22, planStatus: 'ACTIVE', currentPlanId: 1, joinDate: '2024-01-05' },
-];
-
-export const MOCK_ATTENDANCE: AttendanceRecord[] = [
-  { id: 1, customerId: 1, date: '2024-03-20', checkIn: '08:00 AM', checkOut: '09:30 AM' },
-  { id: 2, customerId: 1, date: '2024-03-21', checkIn: '08:15 AM', checkOut: '10:00 AM' },
-  { id: 3, customerId: 1, date: '2024-03-22', checkIn: '07:50 AM', checkOut: '09:15 AM' },
-  { id: 4, customerId: 2, date: '2024-03-22', checkIn: '06:00 PM', checkOut: '07:30 PM' },
 ];
 
 export const MOCK_PLANS: SubscriptionPlan[] = [

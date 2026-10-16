@@ -26,15 +26,6 @@ export interface SubscriptionPlan {
   description: string;
   isPromotion: boolean;
 }
-
-export interface AttendanceRecord {
-  id: number;
-  customerId: number;
-  checkIn: string;
-  checkOut?: string;
-  date: string;
-}
-
 export interface BusinessHours {
   day: string;
   isOpen: boolean;
