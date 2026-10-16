@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import CustomerList from './components/CustomerList';
@@ -10,24 +10,29 @@ import PlansManager from './components/PlansManager';
 import Settings from './components/Settings';
 import Reports from './components/Reports';
 import InventoryManager from './components/InventoryManager';
-import { UserRole, Customer, Product, Sale, AttendanceRecord, AppUser } from './types';
-import { MOCK_CUSTOMERS, MOCK_PRODUCTS, MOCK_ATTENDANCE, MOCK_USERS } from './constants';
-import { Dumbbell } from 'lucide-react';
+import LoginScreen from './components/LoginScreen';
+import ChangePasswordScreen from './components/ChangePasswordScreen';
+import AuthCard, { primaryButtonClass } from './components/AuthCard';
+import { UserRole, Customer, Product, Sale, AttendanceRecord } from './types';
+import { MOCK_CUSTOMERS, MOCK_PRODUCTS, MOCK_ATTENDANCE } from './constants';
+import { toLocalDateString } from './utils/date';
+import { Session, clearSession, fetchMe, loadSession, roleLabel, saveSession, toUiRole } from './services/auth';
+import { ApiError } from './services/api';
+import { MembershipSummary, getCustomerDetail } from './services/members';
 
-const sha256Hex = async (text: string) => {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-};
+const SESSION_EXPIRED = 'Tu sesión expiró. Inicia sesión de nuevo.';
+
+const initials = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-  const isLoggedIn = currentUser !== null;
-  const userRole = currentUser?.role ?? UserRole.CUSTOMER;
+  const [session, setSession] = useState<Session | null>(null);
+  const [booting, setBooting] = useState(true);
+  const [sessionNotice, setSessionNotice] = useState('');
+  // The customer's own membership, read from the API. undefined = still loading, null = none.
+  const [membership, setMembership] = useState<MembershipSummary | null | undefined>(undefined);
+  const userRole = (session && toUiRole(session.user.role)) || UserRole.CUSTOMER;
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [loginUser, setLoginUser] = useState('');
-  const [loginPass, setLoginPass] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [loginBusy, setLoginBusy] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Centralized State (Nuestra "Base de Datos" en vivo)
@@ -45,31 +50,66 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginBusy(true);
-    setLoginError('');
-    try {
-      const username = loginUser.trim().toLowerCase();
-      const hash = await sha256Hex(`${username}:${loginPass}`);
-      const user = MOCK_USERS.find(u => u.username === username && u.passwordHash === hash);
-      if (!user) {
-        setLoginError('Usuario o contraseña incorrectos');
-        return;
-      }
-      setCurrentUser(user);
-      setActiveTab('dashboard');
-      setLoginPass('');
-    } finally {
-      setLoginBusy(false);
-    }
+  const endSession = useCallback((notice = '') => {
+    clearSession();
+    setSession(null);
+    setMembership(undefined);
+    setSessionNotice(notice);
+    setActiveTab('dashboard');
+  }, []);
+
+  const startSession = (next: Session) => {
+    saveSession(next);
+    setSession(next);
+    setSessionNotice('');
+    setActiveTab('dashboard');
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setLoginUser('');
-    setLoginPass('');
-  };
+  // Resume the session of this tab, but only if the server still accepts the token.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const stored = loadSession();
+      if (stored) {
+        try {
+          await fetchMe(stored.accessToken);
+          if (!cancelled) setSession(stored);
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 401) {
+            clearSession();
+            if (!cancelled) setSessionNotice(SESSION_EXPIRED);
+          } else if (!cancelled) {
+            setSession(stored); // server unreachable: keep working with what we have
+          }
+        }
+      }
+      if (!cancelled) setBooting(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // A customer's header shows their real membership.
+  useEffect(() => {
+    if (!session || session.user.role !== 'customer' || !session.user.customerId || session.user.mustChangePassword) {
+      setMembership(undefined);
+      return;
+    }
+    let cancelled = false;
+    getCustomerDetail(session.accessToken, session.user.customerId)
+      .then((detail) => !cancelled && setMembership(detail.membership))
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 401) endSession(SESSION_EXPIRED);
+        else setMembership(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, endSession]);
+
+  const handleLogout = () => endSession();
 
   const addCustomer = (newCustomer: Omit<Customer, 'id' | 'clientCode' | 'joinDate'>) => {
     const nextId = Math.max(...customers.map(c => c.id)) + 1;
@@ -88,7 +128,7 @@ const App: React.FC = () => {
     const newRecord: AttendanceRecord = {
       id: Date.now(),
       customerId,
-      date: now.toISOString().split('T')[0],
+      date: toLocalDateString(now),
       checkIn: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     setAttendance([newRecord, ...attendance]);
@@ -158,7 +198,7 @@ const App: React.FC = () => {
       case 'customers': return <CustomerList customers={customers} onAdd={addCustomer} onToggleStatus={toggleCustomerStatus} />;
       case 'pos': return <POS products={products} onProcessSale={processSale} />;
       case 'plans': return <PlansManager />;
-      case 'attendance': return <AttendanceHistory records={attendance} customerId={userRole === UserRole.CUSTOMER ? currentUser?.customerId : undefined} />;
+      case 'attendance': return <AttendanceHistory records={userRole === UserRole.CUSTOMER ? [] : attendance} />;
       case 'checkin': return <CheckInSimulator customers={customers} allowWithoutPlan={allowWithoutPlan} onCheckIn={handleCheckIn} />;
       case 'settings': return (
         <Settings 
@@ -175,52 +215,47 @@ const App: React.FC = () => {
     }
   };
 
-  if (!isLoggedIn) {
+  if (booting) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 transition-colors">
-        <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 p-10 shadow-2xl animate-in zoom-in duration-500">
-          <div className="flex justify-center mb-8">
-            <div className="bg-blue-600 p-5 rounded-3xl shadow-2xl shadow-blue-600/30">
-              <Dumbbell className="text-white w-12 h-12" />
-            </div>
-          </div>
-          <h1 className="text-4xl font-black text-center text-slate-900 dark:text-white mb-2 tracking-tighter">Fit<span className="text-blue-500">OS</span></h1>
-          <p className="text-slate-500 text-center mb-10 font-bold uppercase tracking-[0.2em] text-xs">Gym Intelligence System</p>
-          
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1 tracking-widest">Acceso de Usuario</label>
-              <input 
-                type="text" 
-                required
-                autoComplete="username"
-                value={loginUser}
-                onChange={(e) => setLoginUser(e.target.value)}
-                placeholder="Usuario"
-                className="w-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4 text-slate-900 dark:text-white focus:border-blue-600 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 transition-all font-bold"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-1 tracking-widest">Contraseña</label>
-              <input 
-                type="password" 
-                required
-                autoComplete="current-password"
-                value={loginPass}
-                onChange={(e) => setLoginPass(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4 text-slate-900 dark:text-white focus:border-blue-600 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 transition-all font-bold"
-              />
-            </div>
-            {loginError && <p role="alert" className="text-red-500 text-sm font-bold text-center">{loginError}</p>}
-            <button disabled={loginBusy} className="w-full disabled:opacity-60 bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-600/20 transition-all active:scale-[0.98] text-lg uppercase tracking-widest">
-              Entrar
-            </button>
-          </form>
-        </div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-500 font-bold">
+        Cargando…
       </div>
     );
   }
+
+  if (!session) {
+    return <LoginScreen onLoggedIn={startSession} notice={sessionNotice} />;
+  }
+
+  if (session.user.mustChangePassword) {
+    return (
+      <ChangePasswordScreen
+        session={session}
+        onChanged={startSession}
+        onExpired={() => endSession(SESSION_EXPIRED)}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (toUiRole(session.user.role) === null) {
+    return (
+      <AuthCard subtitle="Cuenta de plataforma">
+        <p className="text-slate-500 dark:text-slate-400 text-sm text-center mb-8">
+          Esta cuenta administra la plataforma, no un gimnasio. Este panel es para el personal y los socios de cada gimnasio.
+        </p>
+        <button onClick={handleLogout} className={primaryButtonClass}>Salir</button>
+      </AuthCard>
+    );
+  }
+
+  const badge = session.user.role !== 'customer'
+    ? roleLabel(session.user.role)
+    : membership === undefined
+      ? 'Cargando…'
+      : membership && (membership.state === 'current' || membership.state === 'scheduled')
+        ? `${membership.planName} · ${membership.state === 'current' ? 'Activo' : 'Programado'}`
+        : 'Sin plan vigente';
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors">
@@ -245,13 +280,15 @@ const App: React.FC = () => {
             <div className="flex items-center gap-5">
               <div className="text-right hidden sm:block">
                 <p className="text-lg font-black text-slate-900 dark:text-white leading-none">
-                  {currentUser?.displayName}
+                  {session.user.displayName}
                 </p>
                 <p className="text-[10px] text-slate-500 font-black uppercase mt-1.5 tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full inline-block">
-                  {userRole === UserRole.ADMIN ? 'Control Total' : 'Plan Gold · Activo'}
+                  {badge}
                 </p>
               </div>
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser?.username}`} className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 p-0.5 shadow-lg" alt="Avatar" />
+              <div aria-hidden="true" className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl font-black shadow-lg">
+                {initials(session.user.displayName)}
+              </div>
             </div>
           </header>
 

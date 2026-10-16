@@ -39,7 +39,7 @@ const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({ records, customer
                   <Calendar className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-white font-black text-lg">{new Date(record.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                  <p className="text-white font-black text-lg">{new Date(`${record.date}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                   <p className="text-xs text-slate-500 uppercase font-black tracking-widest mt-1">Socio #{record.customerId}</p>
                 </div>
               </div>

@@ -58,12 +58,3 @@ export interface Product {
   stock: number;
   category: string;
 }
-
-export interface AppUser {
-  id: number;
-  username: string;
-  passwordHash: string; // sha256(`${username}:${password}`), hex
-  role: UserRole;
-  displayName: string;
-  customerId?: number;
-}

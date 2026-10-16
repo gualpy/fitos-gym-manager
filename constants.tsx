@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Customer, UserRole, SubscriptionPlan, Product, AttendanceRecord, BusinessHours, AppUser } from './types';
+import { Customer, UserRole, SubscriptionPlan, Product, AttendanceRecord, BusinessHours } from './types';
 import { Users, CreditCard, ShoppingCart, BarChart3, Clock, Settings, LogOut, CheckSquare, FileText } from 'lucide-react';
 
 export const MOCK_CUSTOMERS: Customer[] = [
@@ -48,10 +48,4 @@ export const NAV_ITEMS = [
   { id: 'reports', label: 'Reportes', icon: <FileText className="w-5 h-5" />, roles: [UserRole.ADMIN] },
   { id: 'checkin', label: 'Acceso Torniquete', icon: <CheckSquare className="w-5 h-5" />, roles: [UserRole.ADMIN] },
   { id: 'settings', label: 'Configuración', icon: <Settings className="w-5 h-5" />, roles: [UserRole.ADMIN] },
-];
-
-// Credenciales demo: admin / admin123  ·  juan / juan123
-export const MOCK_USERS: AppUser[] = [
-  { id: 1, username: 'admin', passwordHash: 'bf6b5bdb74c79ece9fc0ad0ac9fb0359f9555d4f35a83b2e6ec69ae99e09603d', role: UserRole.ADMIN, displayName: 'Staff Admin' },
-  { id: 2, username: 'juan', passwordHash: '6510bc396e0267a3294082b04305df9ad78a9d3747cfcf5d76746def4e61b915', role: UserRole.CUSTOMER, displayName: 'Juan Pérez', customerId: 1 },
 ];
