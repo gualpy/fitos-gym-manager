@@ -1,14 +1,29 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ComposedChart, Line } from 'recharts';
-import { Customer, Sale } from '../types';
+import { Sale } from '../types';
+import { Customer, ageOf, searchCustomers } from '../services/customers';
+import { errorText } from '../utils/errors';
 
 interface ReportsProps {
-  customers: Customer[];
   sales: Sale[];
 }
 
-const Reports: React.FC<ReportsProps> = ({ customers, sales }) => {
+const Reports: React.FC<ReportsProps> = ({ sales }) => {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loadError, setLoadError] = useState('');
+
+  // Demographics come from the real member list (the API caps a page at 100).
+  useEffect(() => {
+    let cancelled = false;
+    searchCustomers({ pageSize: 100 })
+      .then((page) => !cancelled && setCustomers(page.items))
+      .catch((err) => !cancelled && setLoadError(errorText(err, 'No se pudieron cargar los socios.')));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Procesar datos de edad por rangos
   const ageRanges = [
     { range: '18-25', count: 0 },
@@ -18,9 +33,11 @@ const Reports: React.FC<ReportsProps> = ({ customers, sales }) => {
   ];
 
   customers.forEach(c => {
-    if (c.age <= 25) ageRanges[0].count++;
-    else if (c.age <= 35) ageRanges[1].count++;
-    else if (c.age <= 50) ageRanges[2].count++;
+    const age = ageOf(c.birthDate);
+    if (age === null) return;
+    if (age <= 25) ageRanges[0].count++;
+    else if (age <= 35) ageRanges[1].count++;
+    else if (age <= 50) ageRanges[2].count++;
     else ageRanges[3].count++;
   });
 
@@ -36,6 +53,7 @@ const Reports: React.FC<ReportsProps> = ({ customers, sales }) => {
       <div>
         <h2 className="text-2xl font-bold text-white">Analítica Avanzada</h2>
         <p className="text-slate-400">Reportes demográficos y de rendimiento financiero.</p>
+        {loadError && <p role="alert" className="mt-2 text-sm font-bold text-red-400">{loadError}</p>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

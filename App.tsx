@@ -13,8 +13,8 @@ import InventoryManager from './components/InventoryManager';
 import LoginScreen from './components/LoginScreen';
 import ChangePasswordScreen from './components/ChangePasswordScreen';
 import AuthCard, { primaryButtonClass } from './components/AuthCard';
-import { UserRole, Customer, Product, Sale } from './types';
-import { MOCK_CUSTOMERS, MOCK_PRODUCTS } from './constants';
+import { UserRole, Product, Sale } from './types';
+import { MOCK_PRODUCTS } from './constants';
 import { Session, getSession, logout, restoreSession, roleLabel, setSession as startSessionOf, subscribe, toUiRole } from './services/auth';
 import { ApiError } from './services/api';
 import { MembershipSummary, getCustomerDetail } from './services/members';
@@ -35,7 +35,6 @@ const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Centralized State (Nuestra "Base de Datos" en vivo)
-  const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [sales, setSales] = useState<Sale[]>([]);
   const [allowWithoutPlan, setAllowWithoutPlan] = useState(false);
@@ -106,18 +105,6 @@ const App: React.FC = () => {
     };
   }, [role, customerId, passwordPending]);
 
-  const addCustomer = (newCustomer: Omit<Customer, 'id' | 'clientCode' | 'joinDate'>) => {
-    const nextId = Math.max(...customers.map(c => c.id)) + 1;
-    const nextCode = Math.max(...customers.map(c => c.clientCode)) + 1;
-    const customer: Customer = {
-      ...newCustomer,
-      id: nextId,
-      clientCode: nextCode,
-      joinDate: new Date().toISOString().split('T')[0]
-    };
-    setCustomers([...customers, customer]);
-  };
-
   const processSale = (cart: { id: number; qty: number; price: number }[]) => {
     const newProducts = products.map(p => {
       const cartItem = cart.find(item => item.id === p.id);
@@ -136,12 +123,6 @@ const App: React.FC = () => {
     setSales([...sales, ...newSales]);
   };
 
-  const toggleCustomerStatus = (id: number) => {
-    setCustomers(customers.map(c => 
-      c.id === id ? { ...c, planStatus: c.planStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' } : c
-    ));
-  };
-
   // Función para descargar la "Base de Datos"
   const downloadDatabase = () => {
     const fullBackup = {
@@ -149,11 +130,9 @@ const App: React.FC = () => {
         system: "FitOS Gym Manager",
         version: "1.0.0",
         exportDate: new Date().toISOString(),
-        totalCustomers: customers.length,
         totalSales: sales.length
       },
       data: {
-        customers,
         products,
         sales,
         config: {
@@ -179,7 +158,7 @@ const App: React.FC = () => {
     if (!session) return null;
     switch (activeTab) {
       case 'dashboard': return <Dashboard />;
-      case 'customers': return <CustomerList customers={customers} onAdd={addCustomer} onToggleStatus={toggleCustomerStatus} />;
+      case 'customers': return <CustomerList />;
       case 'pos': return <POS products={products} onProcessSale={processSale} />;
       case 'plans': return <PlansManager />;
       case 'attendance': return <AttendanceHistory session={session} />;
@@ -193,7 +172,7 @@ const App: React.FC = () => {
           setIsDarkMode={setIsDarkMode}
         />
       );
-      case 'reports': return <Reports customers={customers} sales={sales} />;
+      case 'reports': return <Reports sales={sales} />;
       case 'inventory': return <InventoryManager products={products} onUpdate={setProducts} />;
       default: return <Dashboard />;
     }
