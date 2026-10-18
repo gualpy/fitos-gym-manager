@@ -157,7 +157,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     if (!session) return null;
     switch (activeTab) {
-      case 'dashboard': return <Dashboard />;
+      case 'dashboard': return <Dashboard session={session} />;
       case 'customers': return <CustomerList />;
       case 'pos': return <POS products={products} onProcessSale={processSale} />;
       case 'plans': return <PlansManager />;
@@ -174,7 +174,7 @@ const App: React.FC = () => {
       );
       case 'reports': return <Reports sales={sales} />;
       case 'inventory': return <InventoryManager products={products} onUpdate={setProducts} />;
-      default: return <Dashboard />;
+      default: return <Dashboard session={session} />;
     }
   };
 
