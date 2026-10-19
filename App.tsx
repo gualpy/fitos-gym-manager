@@ -13,8 +13,7 @@ import InventoryManager from './components/InventoryManager';
 import LoginScreen from './components/LoginScreen';
 import ChangePasswordScreen from './components/ChangePasswordScreen';
 import AuthCard, { primaryButtonClass } from './components/AuthCard';
-import { UserRole, Product, Sale } from './types';
-import { MOCK_PRODUCTS } from './constants';
+import { UserRole } from './types';
 import { Session, getSession, logout, restoreSession, roleLabel, setSession as startSessionOf, subscribe, toUiRole } from './services/auth';
 import { ApiError } from './services/api';
 import { MembershipSummary, getCustomerDetail } from './services/members';
@@ -33,10 +32,6 @@ const App: React.FC = () => {
   const userRole = (session && toUiRole(session.user.role)) || UserRole.CUSTOMER;
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // Centralized State (Nuestra "Base de Datos" en vivo)
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [sales, setSales] = useState<Sale[]>([]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -104,30 +99,12 @@ const App: React.FC = () => {
     };
   }, [role, customerId, passwordPending]);
 
-  const processSale = (cart: { id: number; qty: number; price: number }[]) => {
-    const newProducts = products.map(p => {
-      const cartItem = cart.find(item => item.id === p.id);
-      if (cartItem) return { ...p, stock: p.stock - cartItem.qty };
-      return p;
-    });
-    setProducts(newProducts);
-
-    const newSales: Sale[] = cart.map(item => ({
-      id: Date.now() + Math.random(),
-      productId: item.id,
-      amount: item.price * item.qty,
-      quantity: item.qty,
-      date: new Date().toISOString()
-    }));
-    setSales([...sales, ...newSales]);
-  };
-
   const renderContent = () => {
     if (!session) return null;
     switch (activeTab) {
       case 'dashboard': return <Dashboard session={session} />;
       case 'customers': return <CustomerList />;
-      case 'pos': return <POS products={products} onProcessSale={processSale} />;
+      case 'pos': return <POS />;
       case 'plans': return <PlansManager />;
       case 'attendance': return <AttendanceHistory session={session} />;
       case 'checkin': return <CheckInSimulator />;
@@ -138,8 +115,8 @@ const App: React.FC = () => {
           setIsDarkMode={setIsDarkMode}
         />
       );
-      case 'reports': return <Reports sales={sales} />;
-      case 'inventory': return <InventoryManager products={products} onUpdate={setProducts} />;
+      case 'reports': return <Reports session={session} />;
+      case 'inventory': return <InventoryManager canEdit={session.user.role === 'owner' || session.user.role === 'admin'} />;
       default: return <Dashboard session={session} />;
     }
   };

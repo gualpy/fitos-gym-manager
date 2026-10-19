@@ -1,17 +1,23 @@
 
 import React, { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ComposedChart, Line } from 'recharts';
-import { Sale } from '../types';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Customer, ageOf, searchCustomers } from '../services/customers';
+import { DashboardSummary, getDashboardSummary, weekdayShort } from '../services/dashboard';
+import { Session } from '../services/auth';
 import { errorText } from '../utils/errors';
 
 interface ReportsProps {
-  sales: Sale[];
+  session: Session;
 }
 
-const Reports: React.FC<ReportsProps> = ({ sales }) => {
+const money = (value: number) => value.toLocaleString('es-EC', { style: 'currency', currency: 'USD' });
+
+const Reports: React.FC<ReportsProps> = ({ session }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loadError, setLoadError] = useState('');
+  // Reception never sees money: the API sends no sales to that role.
+  const canSeeMoney = session.user.role === 'owner' || session.user.role === 'admin';
 
   // Demographics come from the real member list (the API caps a page at 100).
   useEffect(() => {
@@ -23,6 +29,19 @@ const Reports: React.FC<ReportsProps> = ({ sales }) => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!canSeeMoney) return;
+    let cancelled = false;
+    getDashboardSummary()
+      .then((data) => !cancelled && setSummary(data))
+      .catch((err) => !cancelled && setLoadError(errorText(err, 'No se pudieron cargar los ingresos.')));
+    return () => {
+      cancelled = true;
+    };
+  }, [canSeeMoney]);
+
+  const revenue = (summary?.sales?.daily ?? []).map((d) => ({ day: weekdayShort(d.date), ingresos: d.amount }));
 
   // Procesar datos de edad por rangos
   const ageRanges = [
@@ -100,29 +119,32 @@ const Reports: React.FC<ReportsProps> = ({ sales }) => {
         </div>
       </div>
 
-      <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
-        <h3 className="text-lg font-bold text-white mb-6">Ganancias Estimadas por Día</h3>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={[
-              { day: 'Lun', ingresos: 1200, meta: 1000 },
-              { day: 'Mar', ingresos: 900, meta: 1000 },
-              { day: 'Mie', ingresos: 1500, meta: 1000 },
-              { day: 'Jue', ingresos: 1100, meta: 1000 },
-              { day: 'Vie', ingresos: 1800, meta: 1000 },
-              { day: 'Sab', ingresos: 2100, meta: 1500 },
-              { day: 'Dom', ingresos: 800, meta: 1000 },
-            ]}>
-              <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="day" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px' }} />
-              <Bar dataKey="ingresos" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              <Line type="monotone" dataKey="meta" stroke="#ef4444" strokeWidth={2} dot={false} strokeDasharray="5 5" />
-            </ComposedChart>
-          </ResponsiveContainer>
+      {canSeeMoney && (
+        <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
+          <div className="flex flex-wrap justify-between items-baseline gap-2 mb-6">
+            <h3 className="text-lg font-bold text-white">Ingresos por venta de los últimos 7 días</h3>
+            {summary?.sales && <p className="text-sm font-bold text-slate-400">Total: {money(summary.sales.last7Days)}</p>}
+          </div>
+          <div className="h-80">
+            {summary === null ? (
+              <p className="text-slate-500 font-bold">Cargando ingresos…</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenue}>
+                  <CartesianGrid stroke="#334155" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="day" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    formatter={(value: number) => [money(value), 'Ingresos']}
+                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px' }}
+                  />
+                  <Bar dataKey="ingresos" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
