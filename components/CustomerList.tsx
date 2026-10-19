@@ -11,6 +11,7 @@ import {
   setCustomerStatus,
 } from '../services/customers';
 import { Plan, listPlans } from '../services/plans';
+import { PAYMENT_METHODS, PaymentMethod, cartTotals } from '../services/sales';
 import { errorText, formErrorText } from '../utils/errors';
 
 const PAGE_SIZE = 20;
@@ -23,7 +24,14 @@ const thClass = 'p-6 font-black text-slate-400 dark:text-slate-500 text-[10px] u
 
 const formatDay = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 
-const CustomerList: React.FC = () => {
+const money = (value: number) => value.toLocaleString('es-EC', { style: 'currency', currency: 'USD' });
+
+interface CustomerListProps {
+  /** Only owners and administrators may give a plan without charging it. */
+  canGiveFree: boolean;
+}
+
+const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
   const [text, setText] = useState('');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<CustomerStatus | ''>('');
@@ -40,6 +48,7 @@ const CustomerList: React.FC = () => {
   const [assigning, setAssigning] = useState<Customer | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [planId, setPlanId] = useState('');
+  const [method, setMethod] = useState<PaymentMethod | 'free'>('cash');
   const [assignError, setAssignError] = useState('');
 
   // Wait for the user to stop typing before hitting the API.
@@ -107,6 +116,7 @@ const CustomerList: React.FC = () => {
     setAssigning(customer);
     setAssignError('');
     setPlanId('');
+    setMethod('cash');
     try {
       const available = await listPlans();
       setPlans(available);
@@ -116,13 +126,21 @@ const CustomerList: React.FC = () => {
     }
   };
 
+  const selectedPlan = plans.find((p) => p.id === planId);
+  const planTotal = selectedPlan ? cartTotals([{ price: selectedPlan.price, ivaRate: selectedPlan.ivaRate, quantity: 1 }]).total : 0;
+
   const submitAssign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assigning || !planId) return;
     setSaving(true);
     setAssignError('');
     try {
-      await assignMembership(assigning.id, planId);
+      const plan = plans.find((p) => p.id === planId);
+      // The server prices the plan itself and refuses a payment that does not match; this only fills the amount in.
+      const payments = method === 'free' || !plan
+        ? undefined
+        : [{ method, amount: cartTotals([{ price: plan.price, ivaRate: plan.ivaRate, quantity: 1 }]).total }];
+      await assignMembership(assigning.id, planId, payments);
       setAssigning(null);
       await load();
     } catch (err) {
@@ -342,9 +360,24 @@ const CustomerList: React.FC = () => {
                   <p className="text-xs text-slate-400">Empieza hoy, o al terminar la membresía vigente.</p>
                 </div>
               )}
+              {selectedPlan && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className={labelClass} htmlFor="a-method">Forma de pago</label>
+                    <select id="a-method" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod | 'free')} className={inputClass}>
+                      {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      {canGiveFree && <option value="free">Sin cobro (cortesía)</option>}
+                    </select>
+                  </div>
+                  <div className="flex justify-between items-baseline bg-slate-50 dark:bg-slate-800 rounded-2xl px-5 py-4">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{method === 'free' ? 'No se cobra' : `Total a cobrar (IVA ${selectedPlan.ivaRate} %)`}</span>
+                    <span className="text-2xl font-black text-slate-900 dark:text-white">{method === 'free' ? money(0) : money(planTotal)}</span>
+                  </div>
+                </div>
+              )}
               {assignError && <p role="alert" className="text-sm font-bold text-red-600 dark:text-red-400">{assignError}</p>}
               <button type="submit" disabled={saving || !planId} className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-60 text-white font-black py-5 rounded-2xl transition-all uppercase tracking-widest">
-                {saving ? 'Asignando…' : 'Asignar'}
+                {saving ? 'Procesando…' : method === 'free' ? 'Asignar sin cobro' : 'Cobrar y asignar'}
               </button>
             </form>
           </div>

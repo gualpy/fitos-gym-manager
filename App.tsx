@@ -103,7 +103,7 @@ const App: React.FC = () => {
     if (!session) return null;
     switch (activeTab) {
       case 'dashboard': return <Dashboard session={session} />;
-      case 'customers': return <CustomerList />;
+      case 'customers': return <CustomerList canGiveFree={session.user.role === 'owner' || session.user.role === 'admin'} />;
       case 'pos': return <POS />;
       case 'plans': return <PlansManager />;
       case 'attendance': return <AttendanceHistory session={session} />;
