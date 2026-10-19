@@ -4,13 +4,6 @@ export enum UserRole {
   CUSTOMER = 'CUSTOMER'
 }
 
-export interface BusinessHours {
-  day: string;
-  isOpen: boolean;
-  openTime: string;
-  closeTime: string;
-}
-
 export interface Sale {
   id: number;
   productId: number;

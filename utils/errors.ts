@@ -27,6 +27,8 @@ const FIELD_LABELS: Record<string, string> = {
   durationMonths: 'Duración',
   planId: 'Plan',
   startsOn: 'Inicio',
+  hours: 'El horario',
+  allowWithoutPlan: 'La política de acceso',
 };
 
 const VALIDATION_TEXT: Record<string, string> = {
@@ -34,6 +36,8 @@ const VALIDATION_TEXT: Record<string, string> = {
   required_together: 'debe ir junto con su par (tipo y número)',
   invalid: 'no es válido',
   too_long: 'es demasiado largo',
+  close_before_open: 'tiene un día que cierra antes de abrir',
+  seven_days_required: 'debe incluir los siete días',
 };
 
 const CONFLICT_TEXT: Record<string, string> = {
