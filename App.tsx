@@ -37,7 +37,6 @@ const App: React.FC = () => {
   // Centralized State (Nuestra "Base de Datos" en vivo)
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [allowWithoutPlan, setAllowWithoutPlan] = useState(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -123,37 +122,6 @@ const App: React.FC = () => {
     setSales([...sales, ...newSales]);
   };
 
-  // Función para descargar la "Base de Datos"
-  const downloadDatabase = () => {
-    const fullBackup = {
-      metadata: {
-        system: "FitOS Gym Manager",
-        version: "1.0.0",
-        exportDate: new Date().toISOString(),
-        totalSales: sales.length
-      },
-      data: {
-        products,
-        sales,
-        config: {
-          allowWithoutPlan,
-          isDarkMode
-        }
-      }
-    };
-
-    const dataStr = JSON.stringify(fullBackup, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `fitos_backup_${new Date().toISOString().split('T')[0]}.json`;
-
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    linkElement.remove();
-  };
-
   const renderContent = () => {
     if (!session) return null;
     switch (activeTab) {
@@ -164,10 +132,8 @@ const App: React.FC = () => {
       case 'attendance': return <AttendanceHistory session={session} />;
       case 'checkin': return <CheckInSimulator />;
       case 'settings': return (
-        <Settings 
-          allowWithoutPlan={allowWithoutPlan} 
-          setAllowWithoutPlan={setAllowWithoutPlan} 
-          onDownloadBackup={downloadDatabase} 
+        <Settings
+          canEdit={session.user.role === 'owner' || session.user.role === 'admin'}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
         />
