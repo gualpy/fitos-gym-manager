@@ -141,7 +141,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ canEdit }) => {
       <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
+          <input autoComplete="off"
             type="search"
             aria-label="Buscar productos"
             placeholder="Buscar por nombre, código o categoría"
@@ -151,7 +151,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ canEdit }) => {
           />
         </div>
         <label className="flex items-center gap-3 text-sm font-bold text-slate-600 dark:text-slate-300">
-          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="w-5 h-5" />
+          <input autoComplete="off" type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="w-5 h-5" />
           Mostrar desactivados
         </label>
       </div>
@@ -213,29 +213,29 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ canEdit }) => {
               <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{editing === 'new' ? 'Nuevo producto' : 'Editar producto'}</h3>
               <button onClick={() => setEditing(null)} aria-label="Cerrar" className="p-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-2xl text-slate-400 transition-colors"><X className="w-8 h-8" /></button>
             </div>
-            <form onSubmit={submit} className="p-10 space-y-6">
+            <form autoComplete="off" onSubmit={submit} className="p-10 space-y-6">
               <div className="space-y-2">
                 <label className={labelClass} htmlFor="prod-name">Nombre</label>
-                <input id="prod-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+                <input autoComplete="off" id="prod-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="prod-sku">Código interno</label>
-                  <input id="prod-sku" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="prod-sku" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="prod-barcode">Código de barras</label>
-                  <input id="prod-barcode" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="prod-barcode" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className={inputClass} />
                 </div>
               </div>
               <div className="space-y-2">
                 <label className={labelClass} htmlFor="prod-category">Categoría</label>
-                <input id="prod-category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
+                <input autoComplete="off" id="prod-category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputClass} />
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="prod-price">Precio sin IVA (USD)</label>
-                  <input id="prod-price" required type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="prod-price" required type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="prod-iva">IVA</label>
@@ -249,7 +249,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ canEdit }) => {
               {editing === 'new' ? (
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="prod-stock">Stock inicial</label>
-                  <input id="prod-stock" type="number" min="0" step="1" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="prod-stock" type="number" min="0" step="1" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className={inputClass} />
                 </div>
               ) : (
                 <p className="text-xs text-slate-500">El stock se cambia con el botón de ajuste de la tarjeta, para que quede registrado el motivo.</p>
@@ -273,7 +273,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ canEdit }) => {
               </div>
               <button onClick={() => setAdjusting(null)} aria-label="Cerrar" className="p-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-2xl text-slate-400 transition-colors"><X className="w-8 h-8" /></button>
             </div>
-            <form onSubmit={submitAdjust} className="p-10 space-y-6">
+            <form autoComplete="off" onSubmit={submitAdjust} className="p-10 space-y-6">
               <div className="space-y-2">
                 <label className={labelClass} htmlFor="adj-reason">Motivo</label>
                 <select id="adj-reason" value={adjust.reason} onChange={(e) => setAdjust({ ...adjust, reason: e.target.value as StockReason })} className={inputClass}>
@@ -283,7 +283,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ canEdit }) => {
               </div>
               <div className="space-y-2">
                 <label className={labelClass} htmlFor="adj-delta">Cantidad (negativa para restar)</label>
-                <input id="adj-delta" required type="number" step="1" value={adjust.delta} onChange={(e) => setAdjust({ ...adjust, delta: e.target.value })} className={inputClass} />
+                <input autoComplete="off" id="adj-delta" required type="number" step="1" value={adjust.delta} onChange={(e) => setAdjust({ ...adjust, delta: e.target.value })} className={inputClass} />
               </div>
               {formError && <p role="alert" className="text-sm font-bold text-red-600 dark:text-red-400">{formError}</p>}
               <button type="submit" disabled={saving} className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-black py-5 rounded-2xl transition-all shadow-2xl shadow-blue-600/30 uppercase tracking-widest">

@@ -20,6 +20,18 @@ import { MembershipSummary, getCustomerDetail } from './services/members';
 
 const SESSION_EXPIRED = 'Tu sesión expiró. Inicia sesión de nuevo.';
 
+// The theme is a per-person preference kept in this browser, under the user's id (a shared computer keeps each one's own).
+const themeKey = (userId: string) => `fitos.theme.${userId}`;
+
+const readTheme = (userId: string): boolean | null => {
+  try {
+    const stored = localStorage.getItem(themeKey(userId));
+    return stored === 'dark' ? true : stored === 'light' ? false : null;
+  } catch {
+    return null;
+  }
+};
+
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
 
@@ -31,7 +43,23 @@ const App: React.FC = () => {
   const [membership, setMembership] = useState<MembershipSummary | null | undefined>(undefined);
   const userRole = (session && toUiRole(session.user.role)) || UserRole.CUSTOMER;
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setDarkMode] = useState(false);
+  const userId = session?.user.id;
+
+  // Light by default; whoever signs in gets back the theme they chose, and the login screen goes back to light.
+  useEffect(() => {
+    setDarkMode((userId && readTheme(userId)) || false);
+  }, [userId]);
+
+  const setIsDarkMode = (dark: boolean) => {
+    setDarkMode(dark);
+    if (!userId) return;
+    try {
+      localStorage.setItem(themeKey(userId), dark ? 'dark' : 'light');
+    } catch {
+      // Storage blocked (private window): the choice just lasts for this visit.
+    }
+  };
 
   useEffect(() => {
     if (isDarkMode) {

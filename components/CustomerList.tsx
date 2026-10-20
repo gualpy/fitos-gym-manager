@@ -24,6 +24,8 @@ const thClass = 'p-6 font-black text-slate-400 dark:text-slate-500 text-[10px] u
 
 const formatDay = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 
+const dateLabel = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString('es-EC', { day: 'numeric', month: 'short', year: 'numeric' });
+
 const money = (value: number) => value.toLocaleString('es-EC', { style: 'currency', currency: 'USD' });
 
 interface CustomerListProps {
@@ -50,6 +52,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
   const [planId, setPlanId] = useState('');
   const [method, setMethod] = useState<PaymentMethod | 'free'>('cash');
   const [assignError, setAssignError] = useState('');
+  const [notice, setNotice] = useState('');
 
   // Wait for the user to stop typing before hitting the API.
   useEffect(() => {
@@ -114,6 +117,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
 
   const openAssign = async (customer: Customer) => {
     setAssigning(customer);
+    setNotice('');
     setAssignError('');
     setPlanId('');
     setMethod('cash');
@@ -140,7 +144,9 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
       const payments = method === 'free' || !plan
         ? undefined
         : [{ method, amount: cartTotals([{ price: plan.price, ivaRate: plan.ivaRate, quantity: 1 }]).total }];
-      await assignMembership(assigning.id, planId, payments);
+      const done = await assignMembership(assigning.id, planId, payments);
+      const when = done.state === 'current' ? 'vigente desde hoy' : `programado desde el ${dateLabel(done.startsOn)}`;
+      setNotice(`${done.planName} asignado a ${assigning.name}: ${when} hasta el ${dateLabel(done.endsOn)}. ${done.total !== undefined ? `Cobrado ${money(done.total)}.` : 'Sin cobro (cortesía).'}`);
       setAssigning(null);
       await load();
     } catch (err) {
@@ -165,10 +171,17 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
         </button>
       </div>
 
+      {notice && (
+        <div role="status" className="flex justify-between items-start gap-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 rounded-2xl px-5 py-4 text-sm font-bold">
+          <span>{notice}</span>
+          <button onClick={() => setNotice('')} aria-label="Cerrar aviso" className="shrink-0"><X className="w-5 h-5" /></button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="flex-1 flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <Search className="w-6 h-6 text-slate-400 dark:text-slate-500 ml-3" />
-          <input
+          <input autoComplete="off"
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -287,10 +300,10 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
               <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Alta de Socio</h3>
               <button onClick={() => setShowCreate(false)} aria-label="Cerrar" className="p-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-2xl text-slate-400 dark:text-slate-500 transition-colors"><X className="w-8 h-8" /></button>
             </div>
-            <form onSubmit={submitCreate} className="p-10 space-y-6">
+            <form autoComplete="off" onSubmit={submitCreate} className="p-10 space-y-6">
               <div className="space-y-2">
                 <label className={labelClass} htmlFor="c-name">Nombre y Apellido</label>
-                <input id="c-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+                <input autoComplete="off" id="c-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -304,17 +317,17 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
                 </div>
                 <div className="col-span-2 space-y-2">
                   <label className={labelClass} htmlFor="c-id">Identificación (opcional)</label>
-                  <input id="c-id" value={form.identification} onChange={(e) => setForm({ ...form, identification: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="c-id" value={form.identification} onChange={(e) => setForm({ ...form, identification: e.target.value })} className={inputClass} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="c-email">Correo</label>
-                  <input id="c-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="c-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="c-phone">Teléfono</label>
-                  <input id="c-phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="c-phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="c-gender">Género</label>
@@ -327,7 +340,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
                 </div>
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="c-birth">Fecha de nacimiento</label>
-                  <input id="c-birth" type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="c-birth" type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className={inputClass} />
                 </div>
               </div>
               {formError && <p role="alert" className="text-sm font-bold text-red-600 dark:text-red-400">{formError}</p>}
@@ -346,7 +359,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
               <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Asignar plan a {assigning.name}</h3>
               <button onClick={() => setAssigning(null)} aria-label="Cerrar" className="p-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-2xl text-slate-400 transition-colors"><X className="w-8 h-8" /></button>
             </div>
-            <form onSubmit={submitAssign} className="p-10 space-y-6">
+            <form autoComplete="off" onSubmit={submitAssign} className="p-10 space-y-6">
               {plans.length === 0 && !assignError ? (
                 <p className="text-slate-500 font-bold">No hay planes activos. Crea uno en "Planes y Promos".</p>
               ) : (
@@ -357,7 +370,11 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
                       <option key={plan.id} value={plan.id}>{plan.name} · ${plan.price} · {plan.durationMonths} {plan.durationMonths === 1 ? 'mes' : 'meses'}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-slate-400">Empieza hoy, o al terminar la membresía vigente.</p>
+                  <p className="text-xs text-slate-400">
+                    {assigning.activeUntil
+                      ? `Ya tiene un plan vigente hasta el ${dateLabel(assigning.activeUntil)}: este empezará después y se cobra ahora.`
+                      : 'Empieza hoy.'}
+                  </p>
                 </div>
               )}
               {selectedPlan && (

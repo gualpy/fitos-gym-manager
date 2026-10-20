@@ -142,10 +142,10 @@ const PlansManager: React.FC = () => {
               <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{editing === 'new' ? 'Nuevo plan' : 'Editar plan'}</h3>
               <button onClick={() => setEditing(null)} aria-label="Cerrar" className="p-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-2xl text-slate-400 transition-colors"><X className="w-8 h-8" /></button>
             </div>
-            <form onSubmit={submit} className="p-10 space-y-6">
+            <form autoComplete="off" onSubmit={submit} className="p-10 space-y-6">
               <div className="space-y-2">
                 <label className={labelClass} htmlFor="plan-name">Nombre</label>
-                <input id="plan-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+                <input autoComplete="off" id="plan-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
               </div>
               <div className="space-y-2">
                 <label className={labelClass} htmlFor="plan-desc">Descripción</label>
@@ -154,15 +154,15 @@ const PlansManager: React.FC = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="plan-price">Precio (USD)</label>
-                  <input id="plan-price" required type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="plan-price" required type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className={inputClass} />
                 </div>
                 <div className="space-y-2">
                   <label className={labelClass} htmlFor="plan-months">Duración (meses)</label>
-                  <input id="plan-months" required type="number" min="1" max="60" step="1" value={form.durationMonths} onChange={(e) => setForm({ ...form, durationMonths: e.target.value })} className={inputClass} />
+                  <input autoComplete="off" id="plan-months" required type="number" min="1" max="60" step="1" value={form.durationMonths} onChange={(e) => setForm({ ...form, durationMonths: e.target.value })} className={inputClass} />
                 </div>
               </div>
               <label className="flex items-center gap-3 text-sm font-bold text-slate-600 dark:text-slate-300">
-                <input type="checkbox" checked={form.isPromotion} onChange={(e) => setForm({ ...form, isPromotion: e.target.checked })} className="w-5 h-5" />
+                <input autoComplete="off" type="checkbox" checked={form.isPromotion} onChange={(e) => setForm({ ...form, isPromotion: e.target.checked })} className="w-5 h-5" />
                 Es una promoción
               </label>
               {formError && <p role="alert" className="text-sm font-bold text-red-600 dark:text-red-400">{formError}</p>}

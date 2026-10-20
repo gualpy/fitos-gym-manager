@@ -197,7 +197,7 @@ const Settings: React.FC<SettingsProps> = ({ canEdit, isDarkMode, setIsDarkMode 
           {hours.map((item) => (
             <div key={item.weekday} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-700/50 gap-4">
               <label className="flex items-center gap-5 w-40 cursor-pointer">
-                <input
+                <input autoComplete="off"
                   type="checkbox"
                   checked={item.isOpen}
                   disabled={!editable}
@@ -210,7 +210,7 @@ const Settings: React.FC<SettingsProps> = ({ canEdit, isDarkMode, setIsDarkMode 
               <div className={`flex items-center gap-6 flex-1 justify-center ${!item.isOpen && 'opacity-20 grayscale pointer-events-none'}`}>
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-slate-400" />
-                  <input
+                  <input autoComplete="off"
                     type="time"
                     aria-label={`Apertura del ${weekdayName(item.weekday).toLowerCase()}`}
                     value={item.openTime}
@@ -222,7 +222,7 @@ const Settings: React.FC<SettingsProps> = ({ canEdit, isDarkMode, setIsDarkMode 
                 <span className="text-slate-300 dark:text-slate-700 font-black">❯</span>
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-slate-400" />
-                  <input
+                  <input autoComplete="off"
                     type="time"
                     aria-label={`Cierre del ${weekdayName(item.weekday).toLowerCase()}`}
                     value={item.closeTime}
