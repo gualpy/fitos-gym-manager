@@ -1,4 +1,5 @@
 import { apiRequest } from './api';
+import type { PaymentMethod } from './sales';
 
 export type CustomerStatus = 'active' | 'inactive';
 
@@ -60,8 +61,23 @@ export const createCustomer = (input: CustomerInput) =>
 export const setCustomerStatus = (id: string, status: CustomerStatus) =>
   apiRequest<Customer>(`/customers/${id}/status`, { method: 'PUT', body: { status }, auth: true });
 
-export const assignMembership = (customerId: string, planId: string, startsOn?: string) =>
-  apiRequest<unknown>(`/customers/${customerId}/memberships`, { method: 'POST', body: { planId, startsOn }, auth: true });
+export interface AssignedMembership {
+  id: string;
+  planName: string;
+  startsOn: string;
+  endsOn: string;
+  state: string;
+  /** Only when the plan was charged: the sale that paid for it. */
+  saleId?: string;
+  total?: number;
+}
+
+/**
+ * With payments the plan is charged (a sale is created and linked); without them it is a courtesy,
+ * which the API only allows to owners and administrators.
+ */
+export const assignMembership = (customerId: string, planId: string, payments?: { method: PaymentMethod; amount: number }[], startsOn?: string) =>
+  apiRequest<AssignedMembership>(`/customers/${customerId}/memberships`, { method: 'POST', body: { planId, startsOn, payments }, auth: true });
 
 /** Whole years between a birth date (YYYY-MM-DD) and today, or null when unknown. */
 export const ageOf = (birthDate: string | null): number | null => {
