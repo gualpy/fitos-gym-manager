@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import AuthCard, { Field, primaryButtonClass } from './AuthCard';
 import PasswordInput from './PasswordInput';
 import { ApiError } from '../services/api';
-import { Session, changePassword, login } from '../services/auth';
+import { PendingLogin, Session, changePassword, login } from '../services/auth';
 import { loginErrorMessage } from './LoginScreen';
 
 const MIN_LENGTH = 10;
@@ -22,10 +22,12 @@ interface ChangePasswordScreenProps {
   session: Session;
   /** Receives a fresh session (the server closed every old one when the password changed). */
   onChanged: (session: Session) => void;
+  /** A platform administrator's new login needs the e-mailed confirmation before it becomes a session. */
+  onPending: (pending: PendingLogin) => void;
   onLogout: () => void;
 }
 
-const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ session, onChanged, onLogout }) => {
+const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ session, onChanged, onPending, onLogout }) => {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -44,7 +46,9 @@ const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ session, on
     setError('');
     try {
       await changePassword(current, next);
-      onChanged(await login(session.tenantSlug, session.username, next));
+      const outcome = await login(session.tenantSlug, session.username, next);
+      if ('session' in outcome) onChanged(outcome.session);
+      else onPending(outcome.pending);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return; // session ended: the session manager signs out
       if (err instanceof ApiError && err.code === 'invalid_current_password') setError('La contraseña actual es incorrecta.');

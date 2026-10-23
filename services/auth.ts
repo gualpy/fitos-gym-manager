@@ -32,10 +32,78 @@ interface TokenResponse {
   user: SessionUser;
 }
 
-export async function login(tenantSlug: string, username: string, password: string): Promise<Session> {
-  const response = await apiRequest<TokenResponse>('/auth/login', { body: { username, password }, tenantSlug });
-  return { ...response, tenantSlug, username };
+/** A platform administrator typed the right password: the login finishes with the link sent to their e-mail. */
+export interface PendingLogin {
+  /** Stays in this browser; the e-mailed link is useless without it. */
+  secret: string;
+  expiresAt: string;
+  tenantSlug: string;
+  username: string;
 }
+
+export type LoginOutcome = { session: Session } | { pending: PendingLogin };
+
+interface ChallengeResponse {
+  status: 'confirmation_required';
+  challengeSecret: string;
+  expiresAt: string;
+}
+
+const PENDING_KEY = 'fitos.pendingLogin';
+
+// localStorage (not sessionStorage): the e-mailed link usually opens in a NEW tab of this same browser.
+export function loadPending(): PendingLogin | null {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    const pending = raw ? (JSON.parse(raw) as PendingLogin) : null;
+    return pending && typeof pending.secret === 'string' && Date.parse(pending.expiresAt) > Date.now() ? pending : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPending(): void {
+  try {
+    localStorage.removeItem(PENDING_KEY);
+  } catch {
+    // convenience only
+  }
+}
+
+function savePending(pending: PendingLogin): void {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+  } catch {
+    // Storage blocked: the link could not be completed from this browser; the person signs in again.
+  }
+}
+
+export async function login(tenantSlug: string, username: string, password: string): Promise<LoginOutcome> {
+  const response = await apiRequest<TokenResponse | ChallengeResponse>('/auth/login', { body: { username, password }, tenantSlug });
+  if ('challengeSecret' in response) {
+    const pending = { secret: response.challengeSecret, expiresAt: response.expiresAt, tenantSlug, username };
+    savePending(pending);
+    return { pending };
+  }
+
+  return { session: { ...response, tenantSlug, username } };
+}
+
+/** Finishes a platform administrator's login with the e-mailed link and the secret kept by this browser. */
+export async function confirmLogin(token: string): Promise<Session> {
+  const pending = loadPending();
+  if (!pending) throw new ApiError(400, 'invalid_link', 'No hay un inicio de sesión pendiente en este navegador.');
+  try {
+    const response = await apiRequest<TokenResponse>('/auth/confirm-login', { body: { token, secret: pending.secret } });
+    return { ...response, tenantSlug: pending.tenantSlug, username: pending.username };
+  } finally {
+    clearPending(); // a link works once, whatever the outcome
+  }
+}
+
+/** Sets the password from a welcome link (a new gym's owner). */
+export const setPasswordFromLink = (token: string, password: string) =>
+  apiRequest<void>('/auth/set-password', { body: { token, password } });
 
 /** Asks the server whether the session is still valid (renewing it if the access token just expired). */
 export const fetchMe = () => apiRequest<{ id: string }>('/auth/me', { auth: true });

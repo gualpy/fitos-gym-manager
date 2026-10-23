@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import AuthCard, { Field, primaryButtonClass, textInputClass } from './AuthCard';
 import PasswordInput from './PasswordInput';
 import { ApiConfigError, ApiError, ApiUnreachableError } from '../services/api';
-import { Session, lastTenant, login, rememberTenant, tenantFromHost } from '../services/auth';
+import { PendingLogin, Session, lastTenant, login, rememberTenant, tenantFromHost } from '../services/auth';
 
 interface LoginScreenProps {
   onLoggedIn: (session: Session) => void;
+  /** Platform administrators: the password was right and the confirmation link was e-mailed. */
+  onPending: (pending: PendingLogin) => void;
   /** Shown when the previous session ended (expired, signed out elsewhere). */
   notice?: string;
 }
@@ -15,6 +17,9 @@ export function loginErrorMessage(error: unknown): string {
   if (error instanceof ApiUnreachableError) return 'No se pudo conectar con el servidor. Verifica que la API esté en marcha.';
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Usuario o contraseña incorrectos.';
+    if (error.code === 'tenant_inactive') return 'La suscripción de tu gimnasio está vencida o suspendida. Contacta al administrador de la plataforma.';
+    if (error.code === 'confirmation_unavailable') return 'Esta cuenta no tiene un correo para confirmar el acceso. Pídele al administrador del sistema que lo configure.';
+    if (error.code === 'invalid_link' || error.code === 'link_expired') return 'El enlace no es válido, venció o se abrió en otro navegador. Inicia sesión de nuevo.';
     if (error.status === 429) return 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.';
     if (error.code === 'invalid_host') return 'Gimnasio no válido.';
     if (error.status === 400) return 'Revisa los datos ingresados.';
@@ -22,7 +27,7 @@ export function loginErrorMessage(error: unknown): string {
   return 'No se pudo iniciar sesión. Inténtalo de nuevo.';
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn, notice }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn, onPending, notice }) => {
   const hostTenant = tenantFromHost();
   const [tenant, setTenant] = useState(hostTenant ?? lastTenant());
   const [username, setUsername] = useState('');
@@ -36,9 +41,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn, notice }) => {
     setError('');
     try {
       const slug = (hostTenant ?? tenant).trim().toLowerCase();
-      const session = await login(slug, username.trim(), password);
+      const outcome = await login(slug, username.trim(), password);
       if (!hostTenant) rememberTenant(slug);
-      onLoggedIn(session);
+      if ('session' in outcome) onLoggedIn(outcome.session);
+      else onPending(outcome.pending);
     } catch (err) {
       setError(loginErrorMessage(err));
       setPassword('');

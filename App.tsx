@@ -14,8 +14,11 @@ import InventoryManager from './components/InventoryManager';
 import LoginScreen from './components/LoginScreen';
 import ChangePasswordScreen from './components/ChangePasswordScreen';
 import AuthCard, { primaryButtonClass } from './components/AuthCard';
+import PlatformPanel from './components/PlatformPanel';
+import SubscriptionBanner from './components/SubscriptionBanner';
+import { ConfirmLoginScreen, ConfirmationSentScreen, SetPasswordScreen } from './components/LinkScreens';
 import { UserRole } from './types';
-import { Session, getSession, logout, restoreSession, roleLabel, setSession as startSessionOf, subscribe, toUiRole } from './services/auth';
+import { PendingLogin, Session, clearSession, getSession, logout, restoreSession, roleLabel, setSession as startSessionOf, subscribe, toUiRole } from './services/auth';
 import { ApiError } from './services/api';
 import { MembershipSummary, getCustomerDetail } from './services/members';
 
@@ -33,6 +36,16 @@ const readTheme = (userId: string): boolean | null => {
   }
 };
 
+// One-time links from e-mails carry their token in the URL fragment (it never reaches a server log).
+type EmailLink = { kind: 'confirm' | 'setup'; token: string };
+
+const readEmailLink = (): EmailLink | null => {
+  const match = /^#(confirm|setup)=([A-Za-z0-9_-]{10,200})$/.exec(window.location.hash);
+  return match ? { kind: match[1] as EmailLink['kind'], token: match[2] } : null;
+};
+
+const dropEmailLink = () => window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
 
@@ -40,6 +53,8 @@ const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [booting, setBooting] = useState(true);
   const [sessionNotice, setSessionNotice] = useState('');
+  const [emailLink, setEmailLink] = useState<EmailLink | null>(readEmailLink);
+  const [pending, setPending] = useState<PendingLogin | null>(null);
   // The customer's own membership, read from the API. undefined = still loading, null = none.
   const [membership, setMembership] = useState<MembershipSummary | null | undefined>(undefined);
   const userRole = (session && toUiRole(session.user.role)) || UserRole.CUSTOMER;
@@ -102,6 +117,27 @@ const App: React.FC = () => {
     setActiveTab('dashboard');
   };
 
+  // A link can also be opened in a tab that is already running the app (only the fragment changes, nothing reloads).
+  useEffect(() => {
+    const onHashChange = () => {
+      const link = readEmailLink();
+      if (link) setEmailLink(link);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const closeEmailLink = () => {
+    dropEmailLink();
+    setEmailLink(null);
+  };
+
+  // The administrator typed the right password; the session only exists once the e-mailed link is opened.
+  const handlePending = (next: PendingLogin) => {
+    clearSession();
+    setPending(next);
+  };
+
   const handleLogout = () => {
     void logout();
     setSessionNotice('');
@@ -159,8 +195,18 @@ const App: React.FC = () => {
     );
   }
 
+  if (emailLink?.kind === 'confirm') {
+    return <ConfirmLoginScreen token={emailLink.token} onLoggedIn={startSession} onDone={closeEmailLink} />;
+  }
+
+  if (emailLink?.kind === 'setup') {
+    return <SetPasswordScreen token={emailLink.token} onDone={closeEmailLink} />;
+  }
+
   if (!session) {
-    return <LoginScreen onLoggedIn={startSession} notice={sessionNotice} />;
+    return pending
+      ? <ConfirmationSentScreen pending={pending} onBack={() => setPending(null)} />
+      : <LoginScreen onLoggedIn={startSession} onPending={setPending} notice={sessionNotice} />;
   }
 
   if (session.user.mustChangePassword) {
@@ -168,16 +214,21 @@ const App: React.FC = () => {
       <ChangePasswordScreen
         session={session}
         onChanged={startSession}
+        onPending={handlePending}
         onLogout={handleLogout}
       />
     );
   }
 
+  if (session.user.role === 'platform_admin') {
+    return <PlatformPanel session={session} onLogout={handleLogout} />;
+  }
+
   if (toUiRole(session.user.role) === null) {
     return (
-      <AuthCard subtitle="Cuenta de plataforma">
+      <AuthCard subtitle="Cuenta no compatible">
         <p className="text-slate-500 dark:text-slate-400 text-sm text-center mb-8">
-          Esta cuenta administra la plataforma, no un gimnasio. Este panel es para el personal y los socios de cada gimnasio.
+          Esta cuenta no puede usar este panel.
         </p>
         <button onClick={handleLogout} className={primaryButtonClass}>Salir</button>
       </AuthCard>
@@ -226,6 +277,8 @@ const App: React.FC = () => {
               </div>
             </div>
           </header>
+
+          {session.user.role !== 'customer' && <SubscriptionBanner />}
 
           <div className="pb-24">
             {renderContent()}
