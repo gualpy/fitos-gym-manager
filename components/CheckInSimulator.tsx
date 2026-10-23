@@ -109,7 +109,7 @@ const CheckInSimulator: React.FC = () => {
 
           <div className="space-y-3">
             <label htmlFor="client-code" className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Escanee su código o ingréselo</label>
-            <input
+            <input autoComplete="off"
               id="client-code"
               type="number"
               inputMode="numeric"

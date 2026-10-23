@@ -112,7 +112,7 @@ const POS: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Venta de Productos</h2>
           <div className="relative sm:w-72">
             <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
+            <input autoComplete="off"
               type="search"
               aria-label="Buscar producto"
               placeholder="Buscar producto"
@@ -210,7 +210,7 @@ const POS: React.FC = () => {
               </div>
             ) : (
               <>
-                <input
+                <input autoComplete="off"
                   id="pos-customer"
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}

@@ -87,11 +87,11 @@ const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({ session }) => {
       <div className="flex flex-wrap items-end gap-3 bg-slate-800/40 p-4 rounded-2xl border border-slate-700">
         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1">
           Desde
-          <input type="date" value={from} max={to || undefined} onChange={(e) => change(() => setFrom(e.target.value))} className={`${fieldClass} block`} />
+          <input autoComplete="off" type="date" value={from} max={to || undefined} onChange={(e) => change(() => setFrom(e.target.value))} className={`${fieldClass} block`} />
         </label>
         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1">
           Hasta
-          <input type="date" value={to} min={from || undefined} onChange={(e) => change(() => setTo(e.target.value))} className={`${fieldClass} block`} />
+          <input autoComplete="off" type="date" value={to} min={from || undefined} onChange={(e) => change(() => setTo(e.target.value))} className={`${fieldClass} block`} />
         </label>
         {!isCustomer && (
           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1">
@@ -117,7 +117,7 @@ const AttendanceHistory: React.FC<AttendanceHistoryProps> = ({ session }) => {
           onClick={() => setReload((n) => n + 1)}
           disabled={loading}
           aria-label="Actualizar"
-          className="ml-auto flex items-center gap-2 text-sm font-bold text-slate-300 hover:text-blue-400 disabled:opacity-50 px-3 py-2"
+          className={`${fieldClass} ml-auto flex items-center gap-2 font-bold hover:border-blue-500 transition-colors disabled:opacity-50`}
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
         </button>
