@@ -4,7 +4,7 @@ import PasswordInput from './PasswordInput';
 import { loginErrorMessage } from './LoginScreen';
 import { passwordProblem } from './ChangePasswordScreen';
 import { ApiError } from '../services/api';
-import { PendingLogin, Session, clearPending, confirmLogin, setPasswordFromLink } from '../services/auth';
+import { PendingLogin, Session, SetupInfo, clearPending, confirmLogin, setPasswordFromLink, setupInfo } from '../services/auth';
 
 /** The password was right: tell the administrator to open the link in the e-mail, in this same browser. */
 export const ConfirmationSentScreen: React.FC<{ pending: PendingLogin; onBack: () => void }> = ({ pending, onBack }) => {
@@ -59,6 +59,21 @@ export const SetPasswordScreen: React.FC<{ token: string; onDone: () => void }> 
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Who the link is for and which gym: shown right away, and an invalid link is reported before anything is typed.
+  const [info, setInfo] = useState<SetupInfo | null>(null);
+  const [linkError, setLinkError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    setupInfo(token)
+      .then((data) => !cancelled && setInfo(data))
+      .catch((err) => !cancelled && setLinkError(err instanceof ApiError && err.code === 'invalid_link'
+        ? 'El enlace no es válido, ya se usó o venció. Pide uno nuevo.'
+        : loginErrorMessage(err)));
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,9 +98,20 @@ export const SetPasswordScreen: React.FC<{ token: string; onDone: () => void }> 
     }
   };
 
+  const title = info?.gymName ?? undefined;
+
+  if (linkError) {
+    return (
+      <AuthCard subtitle="Enlace no disponible">
+        <p role="alert" className="text-red-500 text-sm font-bold text-center mb-6">{linkError}</p>
+        <button type="button" onClick={onDone} className={primaryButtonClass}>Ir al inicio de sesión</button>
+      </AuthCard>
+    );
+  }
+
   if (saved) {
     return (
-      <AuthCard subtitle="Contraseña creada">
+      <AuthCard subtitle="Contraseña creada" title={title}>
         <p className="text-slate-600 dark:text-slate-300 text-sm text-center mb-8">Listo. Ya puedes iniciar sesión con tu usuario y la contraseña que elegiste.</p>
         <button type="button" onClick={onDone} className={primaryButtonClass}>Iniciar sesión</button>
       </AuthCard>
@@ -93,7 +119,8 @@ export const SetPasswordScreen: React.FC<{ token: string; onDone: () => void }> 
   }
 
   return (
-    <AuthCard subtitle="Crea tu contraseña">
+    <AuthCard subtitle="Crea tu contraseña" title={title}>
+      {info && <p className="text-slate-600 dark:text-slate-300 text-sm text-center mb-6">Hola {info.displayName}, elige la contraseña con la que entrarás.</p>}
       <form onSubmit={submit} className="space-y-6">
         <Field label="Contraseña">
           <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" autoFocus />

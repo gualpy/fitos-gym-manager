@@ -17,6 +17,7 @@ export function loginErrorMessage(error: unknown): string {
   if (error instanceof ApiUnreachableError) return 'No se pudo conectar con el servidor. Verifica que la API esté en marcha.';
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Usuario o contraseña incorrectos.';
+    if (error.code === 'email_unavailable') return 'No se pudo enviar el correo de confirmación. Inténtalo de nuevo en un momento.';
     if (error.code === 'tenant_inactive') return 'La suscripción de tu gimnasio está vencida o suspendida. Contacta al administrador de la plataforma.';
     if (error.code === 'confirmation_unavailable') return 'Esta cuenta no tiene un correo para confirmar el acceso. Pídele al administrador del sistema que lo configure.';
     if (error.code === 'invalid_link' || error.code === 'link_expired') return 'El enlace no es válido, venció o se abrió en otro navegador. Inicia sesión de nuevo.';

@@ -1,19 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Building2, CircleDollarSign, LogOut, Plus, RefreshCw } from 'lucide-react';
+import { Building2, CircleDollarSign, LogOut, Mail, Plus, RefreshCw } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ApiError } from '../services/api';
 import { Session } from '../services/auth';
 import {
+  EmailSettings,
+  EmailSettingsInput,
   MonthRevenue,
   NewTenant,
   STATUS_LABELS,
   TenantRow,
   TenantStatus,
   extendSubscription,
+  getEmailSettings,
   listTenants,
   monthlyRevenue,
   onboardTenant,
   resendWelcome,
+  saveEmailSettings,
+  sendTestEmail,
   setTenantSuspended,
 } from '../services/platform';
 import { errorText, formErrorText } from '../utils/errors';
@@ -39,7 +44,7 @@ const STATUS_STYLE: Record<TenantStatus, string> = {
   expired: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
 };
 
-type Tab = 'gyms' | 'revenue' | 'new';
+type Tab = 'gyms' | 'revenue' | 'new' | 'email';
 
 const PlatformPanel: React.FC<{ session: Session; onLogout: () => void }> = ({ session, onLogout }) => {
   const [tab, setTab] = useState<Tab>('gyms');
@@ -47,6 +52,7 @@ const PlatformPanel: React.FC<{ session: Session; onLogout: () => void }> = ({ s
     { id: 'gyms', label: 'Gimnasios', icon: <Building2 className="w-4 h-4" /> },
     { id: 'revenue', label: 'Ingresos', icon: <CircleDollarSign className="w-4 h-4" /> },
     { id: 'new', label: 'Nuevo gimnasio', icon: <Plus className="w-4 h-4" /> },
+    { id: 'email', label: 'Correo', icon: <Mail className="w-4 h-4" /> },
   ];
 
   return (
@@ -79,6 +85,7 @@ const PlatformPanel: React.FC<{ session: Session; onLogout: () => void }> = ({ s
         {tab === 'gyms' && <Gyms onNew={() => setTab('new')} />}
         {tab === 'revenue' && <Revenue />}
         {tab === 'new' && <NewGym onCreated={() => setTab('gyms')} />}
+        {tab === 'email' && <EmailTab />}
       </div>
     </div>
   );
@@ -396,6 +403,142 @@ const NewGym: React.FC<{ onCreated: () => void }> = ({ onCreated }) => {
 
         <button disabled={busy} className={primary}>{busy ? 'Creando…' : 'Crear gimnasio y enviar bienvenida'}</button>
       </form>
+    </section>
+  );
+};
+
+// ---- mail server -----------------------------------------------------------------------------------------------
+
+const TEST_FAILURES: Record<string, string> = {
+  auth_failed: 'El servidor rechazó el usuario o la contraseña.',
+  tls_failed: 'No se pudo abrir la conexión segura. Revisa el puerto y la seguridad (465 = SSL, 587 = STARTTLS).',
+  connection_failed: 'No se pudo conectar con el servidor. Revisa el servidor y el puerto.',
+  rejected: 'El servidor rechazó el mensaje (remitente o destinatario).',
+  invalid_address: 'La dirección de destino no es válida.',
+};
+
+const EmailTab: React.FC = () => {
+  const [current, setCurrent] = useState<EmailSettings | null>(null);
+  const [form, setForm] = useState<EmailSettingsInput>({ host: '', port: 465, security: 'ssl_on_connect', username: '', fromAddress: '', password: '' });
+  const [testTo, setTestTo] = useState('');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState<'save' | 'test' | null>(null);
+
+  const apply = (settings: EmailSettings) => {
+    setCurrent(settings);
+    if (settings.configured) {
+      setForm({ host: settings.host, port: settings.port, security: settings.security, username: settings.username, fromAddress: settings.fromAddress, password: '' });
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    getEmailSettings()
+      .then((settings) => !cancelled && apply(settings))
+      .catch((err) => !cancelled && !(err instanceof ApiError && err.status === 401) && setError(errorText(err, 'No se pudo cargar la configuración del correo.')));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const set = <K extends keyof EmailSettingsInput>(key: K, value: EmailSettingsInput[K]) => setForm((f) => ({ ...f, [key]: value }));
+
+  // Convenience only: the usual port for each kind of security.
+  const changeSecurity = (security: EmailSettingsInput['security']) => setForm((f) => ({ ...f, security, port: security === 'ssl_on_connect' ? 465 : 587 }));
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy('save');
+    setError('');
+    setNotice('');
+    try {
+      apply(await saveEmailSettings(form));
+      setNotice('Configuración guardada. La contraseña quedó cifrada.');
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 401)) setError(formErrorText(err, 'No se pudo guardar la configuración.'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const test = async () => {
+    setBusy('test');
+    setError('');
+    setNotice('');
+    try {
+      await sendTestEmail(testTo);
+      setNotice(`Mensaje de prueba enviado a ${testTo}. Revisa tu bandeja (y el spam).`);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'email_failed') setError(TEST_FAILURES[err.reason ?? ''] ?? 'El servidor de correo no aceptó el mensaje.');
+      else if (!(err instanceof ApiError && err.status === 401)) setError(formErrorText(err, 'No se pudo enviar la prueba.'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      <h2 className="text-xl font-black text-slate-900 dark:text-white">Correo del sistema</h2>
+      <p className="text-sm text-slate-500">
+        Con esta cuenta salen todos los correos (bienvenidas, confirmaciones). El remitente se ve con el nombre de cada gimnasio. La contraseña se guarda cifrada y no vuelve a mostrarse.
+      </p>
+      {error && <p role="alert" className={errorBox}>{error}</p>}
+      {notice && <p role="status" className={okBox}>{notice}</p>}
+      {current && !current.configured && <p className="text-sm font-bold text-amber-600">Aún no hay configuración guardada: se usa la del servidor, si existe.</p>}
+
+      <form onSubmit={save} autoComplete="off" className={`${cardClass} space-y-6`}>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1">
+            Servidor SMTP
+            <input autoComplete="off" required value={form.host} onChange={(e) => set('host', e.target.value)} placeholder="smtp.ejemplo.com" className={`${fieldClass} block`} />
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1">
+              Seguridad
+              <select value={form.security} onChange={(e) => changeSecurity(e.target.value as EmailSettingsInput['security'])} className={`${fieldClass} block`}>
+                <option value="ssl_on_connect">SSL/TLS (465)</option>
+                <option value="start_tls">STARTTLS (587)</option>
+              </select>
+            </label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1">
+              Puerto
+              <input autoComplete="off" required inputMode="numeric" value={form.port} onChange={(e) => set('port', Number(e.target.value.replace(/\D/g, '')) || 0)} className={`${fieldClass} block`} />
+            </label>
+          </div>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1">
+            Usuario
+            <input autoComplete="off" value={form.username} onChange={(e) => set('username', e.target.value)} placeholder="cuenta@dominio.com" className={`${fieldClass} block`} />
+          </label>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1">
+            Contraseña
+            <input
+              autoComplete="new-password"
+              type="password"
+              value={form.password}
+              onChange={(e) => set('password', e.target.value)}
+              placeholder={current?.passwordHint ? `${current.passwordHint} (déjala vacía para conservarla)` : ''}
+              className={`${fieldClass} block`}
+            />
+          </label>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest space-y-1 sm:col-span-2">
+            Remitente (dirección)
+            <input autoComplete="off" required type="email" value={form.fromAddress} onChange={(e) => set('fromAddress', e.target.value)} placeholder="no-reply@dominio.com" className={`${fieldClass} block`} />
+          </label>
+        </div>
+        <button disabled={busy !== null} className={primary}>{busy === 'save' ? 'Guardando…' : 'Guardar configuración'}</button>
+      </form>
+
+      <div className={`${cardClass} space-y-3`}>
+        <h3 className="font-black text-slate-900 dark:text-white">Enviar un correo de prueba</h3>
+        <p className="text-xs text-slate-500">Usa lo que está guardado (no el respaldo del servidor), así sabes si funciona de verdad.</p>
+        <div className="flex flex-wrap gap-3">
+          <input autoComplete="off" type="email" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="tu-correo@ejemplo.com" className={`${fieldClass} sm:max-w-sm`} />
+          <button type="button" disabled={busy !== null || !current?.configured || testTo.trim() === ''} onClick={test} className={secondary}>
+            {busy === 'test' ? 'Enviando…' : 'Enviar prueba'}
+          </button>
+        </div>
+      </div>
     </section>
   );
 };

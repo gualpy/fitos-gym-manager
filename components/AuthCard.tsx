@@ -2,7 +2,8 @@ import React from 'react';
 import { Dumbbell } from 'lucide-react';
 
 /** Shared frame of the screens shown before the main app (login, forced password change). */
-const AuthCard: React.FC<{ subtitle: string; children: React.ReactNode }> = ({ subtitle, children }) => (
+/** `title` replaces the product name (a gym's own screens carry the gym's name). */
+const AuthCard: React.FC<{ subtitle: string; title?: string; children: React.ReactNode }> = ({ subtitle, title, children }) => (
   <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 transition-colors">
     <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 p-10 shadow-2xl animate-in zoom-in duration-500">
       <div className="flex justify-center mb-8">
@@ -10,7 +11,11 @@ const AuthCard: React.FC<{ subtitle: string; children: React.ReactNode }> = ({ s
           <Dumbbell className="text-white w-12 h-12" />
         </div>
       </div>
-      <h1 className="text-4xl font-black text-center text-slate-900 dark:text-white mb-2 tracking-tighter">Fit<span className="text-blue-500">OS</span></h1>
+      {title ? (
+        <h1 className="text-3xl font-black text-center text-slate-900 dark:text-white mb-2 tracking-tight break-words">{title}</h1>
+      ) : (
+        <h1 className="text-4xl font-black text-center text-slate-900 dark:text-white mb-2 tracking-tighter">Fit<span className="text-blue-500">OS</span></h1>
+      )}
       <p className="text-slate-500 text-center mb-10 font-bold uppercase tracking-[0.2em] text-xs">{subtitle}</p>
       {children}
     </div>

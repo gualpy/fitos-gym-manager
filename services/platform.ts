@@ -71,3 +71,37 @@ export const STATUS_LABELS: Record<TenantStatus, string> = {
   cancelled: 'Cancelado',
   expired: 'Vencido',
 };
+
+// ---- mail server ----------------------------------------------------------------------------------------------
+
+export type SmtpSecurity = 'ssl_on_connect' | 'start_tls';
+
+export interface EmailSettings {
+  configured: boolean;
+  host: string;
+  port: number;
+  security: SmtpSecurity;
+  username: string;
+  fromAddress: string;
+  /** Only the last characters ("••••abcd"): the password itself never comes back from the API. */
+  passwordHint: string | null;
+  updatedAt: string | null;
+}
+
+export interface EmailSettingsInput {
+  host: string;
+  port: number;
+  security: SmtpSecurity;
+  username: string;
+  fromAddress: string;
+  /** Empty = keep the stored one. */
+  password: string;
+}
+
+export const getEmailSettings = () => apiRequest<EmailSettings>('/platform/email-settings', { auth: true });
+
+export const saveEmailSettings = (input: EmailSettingsInput) =>
+  apiRequest<EmailSettings>('/platform/email-settings', { method: 'PUT', body: input, auth: true });
+
+export const sendTestEmail = (to: string) =>
+  apiRequest<void>('/platform/email-settings/test', { body: { to }, auth: true });

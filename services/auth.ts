@@ -101,6 +101,15 @@ export async function confirmLogin(token: string): Promise<Session> {
   }
 }
 
+export interface SetupInfo {
+  displayName: string;
+  /** The gym the account belongs to; the page shows it instead of the product name. */
+  gymName: string | null;
+}
+
+/** Who a welcome link is for and which gym, without spending it. Rejects when the link is invalid, used or expired. */
+export const setupInfo = (token: string) => apiRequest<SetupInfo>('/auth/setup-info', { body: { token } });
+
 /** Sets the password from a welcome link (a new gym's owner). */
 export const setPasswordFromLink = (token: string, password: string) =>
   apiRequest<void>('/auth/set-password', { body: { token, password } });
