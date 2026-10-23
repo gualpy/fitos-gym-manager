@@ -9,6 +9,7 @@ import AttendanceHistory from './components/AttendanceHistory';
 import PlansManager from './components/PlansManager';
 import Settings from './components/Settings';
 import Reports from './components/Reports';
+import BodyProgress from './components/BodyProgress';
 import InventoryManager from './components/InventoryManager';
 import LoginScreen from './components/LoginScreen';
 import ChangePasswordScreen from './components/ChangePasswordScreen';
@@ -143,6 +144,7 @@ const App: React.FC = () => {
           setIsDarkMode={setIsDarkMode}
         />
       );
+      case 'progress': return <BodyProgress session={session} />;
       case 'reports': return <Reports session={session} />;
       case 'inventory': return <InventoryManager canEdit={session.user.role === 'owner' || session.user.role === 'admin'} />;
       default: return <Dashboard session={session} />;

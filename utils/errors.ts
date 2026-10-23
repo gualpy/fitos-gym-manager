@@ -38,6 +38,9 @@ const FIELD_LABELS: Record<string, string> = {
   payments: 'El pago',
   hours: 'El horario',
   allowWithoutPlan: 'La política de acceso',
+  weightKg: 'El peso',
+  heightCm: 'La estatura',
+  measuredOn: 'La fecha',
 };
 
 const VALIDATION_TEXT: Record<string, string> = {
@@ -46,6 +49,7 @@ const VALIDATION_TEXT: Record<string, string> = {
   invalid: 'no es válido',
   inactive: 'está inactivo',
   in_the_past: 'no puede ser una fecha pasada',
+  in_the_future: 'no puede ser una fecha futura',
   too_long: 'es demasiado largo',
   too_many: 'tiene demasiados elementos',
   close_before_open: 'tiene un día que cierra antes de abrir',
