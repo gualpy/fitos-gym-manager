@@ -5,6 +5,8 @@ export class ApiError extends Error {
     public readonly code: string,
     message: string,
     public readonly details?: Record<string, string>,
+    /** Finer cause some failures carry (e.g. why the mail server refused a message). */
+    public readonly reason?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -99,8 +101,8 @@ async function send<T>(path: string, options: RequestOptions, token: string | un
   }
 
   if (!response.ok) {
-    const error = (json as { error?: { code?: string; message?: string; details?: Record<string, string> } } | null)?.error;
-    throw new ApiError(response.status, error?.code ?? `http_${response.status}`, error?.message ?? response.statusText, error?.details);
+    const error = (json as { error?: { code?: string; message?: string; details?: Record<string, string>; reason?: string } } | null)?.error;
+    throw new ApiError(response.status, error?.code ?? `http_${response.status}`, error?.message ?? response.statusText, error?.details, error?.reason);
   }
 
   return json as T;

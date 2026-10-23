@@ -55,6 +55,13 @@ const FIELD_LABELS: Record<string, string> = {
   sriEstablishment: 'El establecimiento',
   emissionPointCode: 'El punto de emisión',
   months: 'Los meses',
+  host: 'El servidor',
+  port: 'El puerto',
+  security: 'La seguridad',
+  username: 'El usuario del correo',
+  fromAddress: 'El remitente',
+  password: 'La contraseña',
+  to: 'El destinatario',
   amount: 'El monto',
 };
 
@@ -88,6 +95,8 @@ const CONFLICT_TEXT: Record<string, string> = {
   ruc_taken: 'Ya existe un gimnasio con ese RUC.',
   owner_already_active: 'El dueño ya creó su contraseña: no hace falta reenviar la bienvenida.',
   owner_without_email: 'El dueño no tiene correo guardado.',
+  email_not_configured: 'Primero guarda la configuración del correo.',
+  email_password_unreadable: 'No se pudo leer la contraseña guardada. Guárdala de nuevo.',
   no_branch: 'El gimnasio no tiene una sede activa. Configúrala antes de vender.',
 };
 
