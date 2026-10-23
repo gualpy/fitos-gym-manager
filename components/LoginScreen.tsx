@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AuthCard, { Field, primaryButtonClass, textInputClass } from './AuthCard';
 import PasswordInput from './PasswordInput';
+import { ForgotPasswordScreen } from './LinkScreens';
 import { ApiConfigError, ApiError, ApiUnreachableError } from '../services/api';
 import { PendingLogin, Session, lastTenant, login, rememberTenant, tenantFromHost } from '../services/auth';
 
@@ -35,6 +36,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn, onPending, notice
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [forgot, setForgot] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +56,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn, onPending, notice
     }
   };
 
+  if (forgot) {
+    return <ForgotPasswordScreen initialTenant={hostTenant ?? tenant} tenantLocked={hostTenant !== null} onBack={() => setForgot(false)} />;
+  }
+
   return (
     <AuthCard subtitle="Gym Intelligence System">
       <form onSubmit={submit} className="space-y-6">
@@ -70,20 +76,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoggedIn, onPending, notice
             />
           </Field>
         )}
-        <Field label="Acceso de Usuario">
+        <Field label="Correo o usuario">
           <input
             type="text"
             required
             autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Usuario"
+            placeholder="tu@correo.com o usuario"
             className={textInputClass}
           />
         </Field>
         <Field label="Contraseña">
           <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" />
         </Field>
+        <button type="button" onClick={() => setForgot(true)} className="w-full text-slate-500 hover:text-blue-500 text-sm font-bold transition-colors -mt-2">¿Olvidaste tu contraseña?</button>
         {notice && !error && <p role="status" className="text-amber-500 text-sm font-bold text-center">{notice}</p>}
         {error && <p role="alert" className="text-red-500 text-sm font-bold text-center">{error}</p>}
         <button disabled={busy} className={primaryButtonClass}>

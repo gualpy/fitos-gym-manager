@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Search, Plus, UserCheck, UserX, X, CreditCard, UserMinus, UserPlus } from 'lucide-react';
+import AccessDialog from './AccessDialog';
+import { Search, Plus, UserCheck, UserX, X, CreditCard, UserMinus, UserPlus, KeyRound } from 'lucide-react';
 import {
   Customer,
   CustomerInput,
@@ -48,6 +49,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
   const [saving, setSaving] = useState(false);
 
   const [assigning, setAssigning] = useState<Customer | null>(null);
+  const [accessFor, setAccessFor] = useState<Customer | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [planId, setPlanId] = useState('');
   const [method, setMethod] = useState<PaymentMethod | 'free'>('cash');
@@ -266,6 +268,13 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
                         <CreditCard className="w-4 h-4" /> Asignar plan
                       </button>
                       <button
+                        onClick={() => setAccessFor(customer)}
+                        disabled={customer.status === 'inactive'}
+                        className="p-3 rounded-2xl transition-all flex items-center gap-2 font-black text-[10px] uppercase tracking-tighter bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <KeyRound className="w-4 h-4" /> Acceso app
+                      </button>
+                      <button
                         onClick={() => toggleStatus(customer)}
                         className={`p-3 rounded-2xl transition-all flex items-center gap-2 font-black text-[10px] uppercase tracking-tighter ${
                           customer.status === 'active'
@@ -351,6 +360,8 @@ const CustomerList: React.FC<CustomerListProps> = ({ canGiveFree }) => {
           </div>
         </div>
       )}
+
+      {accessFor && <AccessDialog customer={{ id: accessFor.id, name: accessFor.name, email: accessFor.email }} onClose={() => setAccessFor(null)} />}
 
       {assigning && (
         <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-6">

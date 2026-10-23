@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import AuthCard, { Field, primaryButtonClass } from './AuthCard';
+import AuthCard, { primaryButtonClass } from './AuthCard';
 import PasswordInput from './PasswordInput';
 import { loginErrorMessage } from './LoginScreen';
 import { passwordProblem } from './ChangePasswordScreen';
 import { ApiError } from '../services/api';
-import { PendingLogin, Session, SetupInfo, clearPending, confirmLogin, setPasswordFromLink, setupInfo } from '../services/auth';
+import { PendingLogin, Session, SetupInfo, clearPending, confirmLogin, forgotPassword, setPasswordFromLink, setupInfo } from '../services/auth';
+import { Field, textInputClass } from './AuthCard';
 
 /** The password was right: tell the administrator to open the link in the e-mail, in this same browser. */
 export const ConfirmationSentScreen: React.FC<{ pending: PendingLogin; onBack: () => void }> = ({ pending, onBack }) => {
@@ -99,6 +100,7 @@ export const SetPasswordScreen: React.FC<{ token: string; onDone: () => void }> 
   };
 
   const title = info?.gymName ?? undefined;
+  const resetting = info?.purpose === 'reset';
 
   if (linkError) {
     return (
@@ -111,16 +113,16 @@ export const SetPasswordScreen: React.FC<{ token: string; onDone: () => void }> 
 
   if (saved) {
     return (
-      <AuthCard subtitle="Contraseña creada" title={title}>
-        <p className="text-slate-600 dark:text-slate-300 text-sm text-center mb-8">Listo. Ya puedes iniciar sesión con tu usuario y la contraseña que elegiste.</p>
+      <AuthCard subtitle={resetting ? 'Contraseña actualizada' : 'Contraseña creada'} title={title}>
+        <p className="text-slate-600 dark:text-slate-300 text-sm text-center mb-8">Listo. Ya puedes iniciar sesión con tu correo y la contraseña que elegiste.</p>
         <button type="button" onClick={onDone} className={primaryButtonClass}>Iniciar sesión</button>
       </AuthCard>
     );
   }
 
   return (
-    <AuthCard subtitle="Crea tu contraseña" title={title}>
-      {info && <p className="text-slate-600 dark:text-slate-300 text-sm text-center mb-6">Hola {info.displayName}, elige la contraseña con la que entrarás.</p>}
+    <AuthCard subtitle={resetting ? 'Restablece tu contraseña' : 'Crea tu contraseña'} title={title}>
+      {info && <p className="text-slate-600 dark:text-slate-300 text-sm text-center mb-6">Hola {info.displayName}, elige {resetting ? 'tu nueva contraseña' : 'la contraseña con la que entrarás'}.</p>}
       <form onSubmit={submit} className="space-y-6">
         <Field label="Contraseña">
           <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" autoFocus />
@@ -130,6 +132,57 @@ export const SetPasswordScreen: React.FC<{ token: string; onDone: () => void }> 
         </Field>
         {error && <p role="alert" className="text-red-500 text-sm font-bold text-center">{error}</p>}
         <button disabled={busy} className={primaryButtonClass}>{busy ? 'Guardando…' : 'Guardar contraseña'}</button>
+      </form>
+    </AuthCard>
+  );
+};
+
+/** "I forgot my password": asks for the gym (when it is not in the address) and the e-mail or user; the answer is always the same. */
+export const ForgotPasswordScreen: React.FC<{ initialTenant: string; tenantLocked: boolean; onBack: () => void }> = ({ initialTenant, tenantLocked, onBack }) => {
+  const [tenant, setTenant] = useState(initialTenant);
+  const [identifier, setIdentifier] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await forgotPassword(tenant.trim().toLowerCase(), identifier.trim());
+      setSent(true);
+    } catch (err) {
+      setError(loginErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <AuthCard subtitle="Revisa tu correo">
+        <p className="text-slate-600 dark:text-slate-300 text-sm text-center mb-3">Si existe una cuenta con ese dato, te enviamos un enlace para elegir una nueva contraseña.</p>
+        <p className="text-slate-500 dark:text-slate-400 text-xs text-center mb-8">Vence en una hora. Si no llega, revisa la carpeta de spam.</p>
+        <button type="button" onClick={onBack} className={primaryButtonClass}>Volver al inicio de sesión</button>
+      </AuthCard>
+    );
+  }
+
+  return (
+    <AuthCard subtitle="Restablecer contraseña">
+      <form onSubmit={submit} className="space-y-6">
+        {!tenantLocked && (
+          <Field label="Gimnasio">
+            <input type="text" required autoComplete="organization" value={tenant} onChange={(e) => setTenant(e.target.value)} placeholder="Identificador del gimnasio" className={textInputClass} />
+          </Field>
+        )}
+        <Field label="Correo o usuario">
+          <input type="text" required autoComplete="username" value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="tu@correo.com" className={textInputClass} />
+        </Field>
+        {error && <p role="alert" className="text-red-500 text-sm font-bold text-center">{error}</p>}
+        <button disabled={busy} className={primaryButtonClass}>{busy ? 'Enviando…' : 'Enviarme un enlace'}</button>
+        <button type="button" onClick={onBack} className="w-full text-slate-500 hover:text-blue-500 text-sm font-bold transition-colors">Volver</button>
       </form>
     </AuthCard>
   );
