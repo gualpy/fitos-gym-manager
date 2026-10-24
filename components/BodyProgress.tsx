@@ -53,7 +53,6 @@ const BodyProgress: React.FC<{ session: Session }> = ({ session }) => {
 
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
-  const [date, setDate] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -105,7 +104,6 @@ const BodyProgress: React.FC<{ session: Session }> = ({ session }) => {
   useEffect(() => {
     setMeasurements([]);
     setWeight('');
-    setDate('');
     setFormError('');
     if (person) void load(person.id);
   }, [person, load]);
@@ -128,9 +126,8 @@ const BodyProgress: React.FC<{ session: Session }> = ({ session }) => {
     setSaving(true);
     setFormError('');
     try {
-      await recordMeasurement(person.id, { weightKg: w, heightCm: h, measuredOn: date || undefined });
+      await recordMeasurement(person.id, { weightKg: w, heightCm: h });
       setWeight('');
-      setDate('');
       await load(person.id);
     } catch (err) {
       setFormError(formErrorText(err, 'No se pudo guardar la medida.'));
@@ -228,15 +225,11 @@ const BodyProgress: React.FC<{ session: Session }> = ({ session }) => {
                   <input autoComplete="off" id="b-height" inputMode="decimal" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="170" className={inputClass} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className={labelClass} htmlFor="b-date">Fecha (vacío = hoy)</label>
-                <input autoComplete="off" id="b-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
-              </div>
               {formError && <p role="alert" className="text-sm font-bold text-red-600 dark:text-red-400">{formError}</p>}
               <button type="submit" disabled={saving} className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm">
                 {saving ? 'Guardando…' : 'Guardar medida'}
               </button>
-              <p className="text-xs text-slate-400">Si ya hay una medida de ese día, se reemplaza.</p>
+              <p className="text-xs text-slate-400">Se guarda con la fecha de hoy; si ya registraste una medida hoy, se reemplaza.</p>
             </form>
 
             <div className={`${cardClass} space-y-4`}>
