@@ -36,6 +36,12 @@ const secondary = `${buttonClass} border border-slate-300 dark:border-slate-700 
 const errorBox = 'text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl px-5 py-3';
 const okBox = 'text-sm font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-2xl px-5 py-3';
 
+const OWNER_LABELS: Record<TenantRow['ownerState'], string> = {
+  pending: 'Dueño: invitación pendiente',
+  active: 'Dueño activo',
+  none: 'Sin dueño',
+};
+
 const STATUS_STYLE: Record<TenantStatus, string> = {
   trial: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   active: 'bg-green-500/10 text-green-600 dark:text-green-400',
@@ -179,6 +185,9 @@ const Gyms: React.FC<{ onNew: () => void }> = ({ onNew }) => {
               <div>
                 <p className="text-lg font-black text-slate-900 dark:text-white">{row.name}</p>
                 <p className="text-xs text-slate-500 font-bold">{row.slug} · {row.customers} socios</p>
+                <p className={`text-xs font-bold ${row.ownerState === 'pending' ? 'text-amber-600' : 'text-slate-500'}`}>
+                  {OWNER_LABELS[row.ownerState] ?? ''}
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-4">
                 <span className={`text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${STATUS_STYLE[row.effectiveStatus]}`}>
@@ -200,9 +209,11 @@ const Gyms: React.FC<{ onNew: () => void }> = ({ onNew }) => {
               <button type="button" disabled={busy === row.id} onClick={() => toggleSuspend(row)} className={secondary}>
                 {row.status === 'suspended' ? 'Reactivar' : 'Suspender'}
               </button>
-              <button type="button" disabled={busy === row.id} onClick={() => void run(row.id, async () => { await resendWelcome(row.id); return `Bienvenida reenviada al dueño de ${row.name}.`; })} className={secondary}>
-                Reenviar bienvenida
-              </button>
+              {row.ownerState === 'pending' && (
+                <button type="button" disabled={busy === row.id} onClick={() => void run(row.id, async () => { await resendWelcome(row.id); return `Bienvenida reenviada al dueño de ${row.name}.`; })} className={secondary}>
+                  Reenviar bienvenida
+                </button>
+              )}
             </div>
 
             {extending === row.id && (
