@@ -10,6 +10,7 @@ import PlansManager from './components/PlansManager';
 import Settings from './components/Settings';
 import Reports from './components/Reports';
 import BodyProgress from './components/BodyProgress';
+import TeamManager from './components/TeamManager';
 import InventoryManager from './components/InventoryManager';
 import LoginScreen from './components/LoginScreen';
 import ChangePasswordScreen from './components/ChangePasswordScreen';
@@ -164,6 +165,8 @@ const App: React.FC = () => {
     };
   }, [role, customerId, passwordPending]);
 
+  const canManageTeam = session?.user.role === 'owner' || session?.user.role === 'admin';
+
   const renderContent = () => {
     if (!session) return null;
     switch (activeTab) {
@@ -182,6 +185,7 @@ const App: React.FC = () => {
       );
       case 'progress': return <BodyProgress session={session} />;
       case 'reports': return <Reports session={session} />;
+      case 'team': return canManageTeam ? <TeamManager session={session} /> : <Dashboard session={session} />;
       case 'inventory': return <InventoryManager canEdit={session.user.role === 'owner' || session.user.role === 'admin'} />;
       default: return <Dashboard session={session} />;
     }
@@ -250,6 +254,7 @@ const App: React.FC = () => {
         setActiveTab={setActiveTab} 
         onLogout={handleLogout} 
         userRole={userRole}
+        canManageTeam={canManageTeam}
         isDarkMode={isDarkMode}
         toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
       />

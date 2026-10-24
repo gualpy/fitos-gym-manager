@@ -5,7 +5,7 @@ export function errorText(error: unknown, fallback: string): string {
   if (error instanceof ApiConfigError) return error.message;
   if (error instanceof ApiUnreachableError) return 'No se pudo conectar con el servidor. Verifica que la API esté en marcha.';
   if (error instanceof ApiError) {
-    if (error.status === 403) return 'No tienes permiso para ver esto.';
+    if (error.status === 403) return error.code === 'role_not_allowed' ? 'No tienes permiso para crear o cambiar ese rol.' : 'No tienes permiso para ver esto.';
     if (error.status === 429) return 'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.';
     if (error.status >= 500) return 'El servidor tuvo un problema. Inténtalo de nuevo en un momento.';
   }
@@ -62,6 +62,8 @@ const FIELD_LABELS: Record<string, string> = {
   fromAddress: 'El remitente',
   password: 'La contraseña',
   to: 'El destinatario',
+  role: 'El rol',
+  isActive: 'El estado',
   amount: 'El monto',
 };
 
@@ -95,6 +97,15 @@ const CONFLICT_TEXT: Record<string, string> = {
   ruc_taken: 'Ya existe un gimnasio con ese RUC.',
   owner_already_active: 'El dueño ya creó su contraseña: no hace falta reenviar la bienvenida.',
   owner_without_email: 'El dueño no tiene correo guardado.',
+  email_taken: 'Ese correo ya tiene una cuenta en este gimnasio.',
+  access_already_granted: 'Este socio ya tiene acceso a la app.',
+  customer_inactive: 'El socio está inactivo.',
+  already_active: 'Esa persona ya creó su contraseña.',
+  no_email: 'Esa persona no tiene correo guardado.',
+  cannot_deactivate_self: 'No puedes desactivar tu propia cuenta.',
+  last_owner: 'No se puede desactivar al único propietario.',
+  owner_role_fixed: 'El rol del propietario no se cambia.',
+  cannot_change_own_role: 'No puedes cambiar tu propio rol.',
   email_not_configured: 'Primero guarda la configuración del correo.',
   email_password_unreadable: 'No se pudo leer la contraseña guardada. Guárdala de nuevo.',
   no_branch: 'El gimnasio no tiene una sede activa. Configúrala antes de vender.',

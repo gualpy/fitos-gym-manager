@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NAV_ITEMS } from '../constants';
-import { LogOut, Dumbbell, Package, Sun, Moon } from 'lucide-react';
+import { LogOut, Dumbbell, Package, Sun, Moon, UsersRound } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface SidebarProps {
@@ -9,11 +9,13 @@ interface SidebarProps {
   setActiveTab: (id: string) => void;
   onLogout: () => void;
   userRole: UserRole;
+  /** Owner and administrators only: receptionists never see the team. */
+  canManageTeam: boolean;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, userRole, isDarkMode, toggleDarkMode }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, userRole, canManageTeam, isDarkMode, toggleDarkMode }) => {
   return (
     <aside className="w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full sticky top-0 shadow-2xl z-20 transition-colors">
       <div className="p-8 flex items-center gap-4">
@@ -40,6 +42,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
             <span className="font-bold text-sm tracking-tight">{item.label}</span>
           </button>
         ))}
+
+        {canManageTeam && (
+          <button
+            onClick={() => setActiveTab('team')}
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group ${
+              activeTab === 'team'
+                ? 'bg-blue-600 text-white shadow-xl shadow-blue-900/40 translate-x-1'
+                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-slate-100 hover:translate-x-1'
+            }`}
+          >
+            <div className={`${activeTab === 'team' ? 'text-white' : 'text-slate-400 group-hover:text-blue-500'} transition-colors`}>
+              <UsersRound className="w-5 h-5" />
+            </div>
+            <span className="font-bold text-sm tracking-tight">Equipo</span>
+          </button>
+        )}
 
         {userRole === UserRole.ADMIN && (
           <button

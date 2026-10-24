@@ -105,10 +105,16 @@ export interface SetupInfo {
   displayName: string;
   /** The gym the account belongs to; the page shows it instead of the product name. */
   gymName: string | null;
+  /** `welcome` = choosing the first password, `reset` = replacing a forgotten one. */
+  purpose: 'welcome' | 'reset';
 }
 
 /** Who a welcome link is for and which gym, without spending it. Rejects when the link is invalid, used or expired. */
 export const setupInfo = (token: string) => apiRequest<SetupInfo>('/auth/setup-info', { body: { token } });
+
+/** "I forgot my password". The answer never says whether the account exists; an e-mail follows only if it does. */
+export const forgotPassword = (tenantSlug: string, identifier: string) =>
+  apiRequest<{ status: 'accepted' }>('/auth/forgot-password', { body: { identifier }, tenantSlug });
 
 /** Sets the password from a welcome link (a new gym's owner). */
 export const setPasswordFromLink = (token: string, password: string) =>
