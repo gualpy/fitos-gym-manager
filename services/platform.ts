@@ -2,6 +2,9 @@ import { apiRequest } from './api';
 
 export type TenantStatus = 'trial' | 'active' | 'suspended' | 'cancelled' | 'expired';
 
+/** The owner's account: never set a password (a welcome link can be resent), already active, or no owner at all. */
+export type OwnerState = 'pending' | 'active' | 'none';
+
 export interface TenantRow {
   id: string;
   name: string;
@@ -13,6 +16,7 @@ export interface TenantRow {
   daysLeft: number;
   createdAt: string;
   customers: number;
+  ownerState: OwnerState;
 }
 
 export interface MonthRevenue {
