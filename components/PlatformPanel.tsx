@@ -422,7 +422,7 @@ const NewGym: React.FC<{ onCreated: () => void }> = ({ onCreated }) => {
 
 const TEST_FAILURES: Record<string, string> = {
   auth_failed: 'El servidor rechazó el usuario o la contraseña.',
-  tls_failed: 'No se pudo abrir la conexión segura. Revisa el puerto y la seguridad (465 = SSL, 587 = STARTTLS).',
+  tls_failed: 'No se pudo establecer la conexión segura (TLS). Revisa el puerto y la seguridad (465 = SSL, 587 = STARTTLS). Si el certificado del servidor no es válido o no se puede verificar, el envío también falla aquí.',
   connection_failed: 'No se pudo conectar con el servidor. Revisa el servidor y el puerto.',
   rejected: 'El servidor rechazó el mensaje (remitente o destinatario).',
   invalid_address: 'La dirección de destino no es válida.',
